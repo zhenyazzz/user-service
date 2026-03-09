@@ -1,0 +1,15 @@
+# Maven
+target/
+.mvn/timing.properties
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.cursor/
+
+# Secrets
+.env
+.env.*
+
+run.ps1
