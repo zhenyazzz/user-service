@@ -1,0 +1,32 @@
+server:
+  port: 8080
+
+app:
+  cache:
+    default-ttl: 1h
+    cache-ttls:
+      users: 7d
+      users_pages: 15m
+      cards: 15m
+      cards_pages: 15m
+      cards_user: 15m
+
+spring:
+  cache:
+    type: redis
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/user_service_db}
+    username: ${SPRING_DATASOURCE_USERNAME:user_service}
+    password: ${SPRING_DATASOURCE_PASSWORD:user_service_secret}
+    driver-class-name: org.postgresql.Driver
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      password: ${SPRING_DATA_REDIS_PASSWORD:}
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+  jpa:
+    defer-datasource-initialization: false 
+    hibernate:
+      ddl-auto: validate
