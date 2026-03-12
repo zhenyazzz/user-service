@@ -12,7 +12,7 @@ concurrency:
 
 env:
   JAVA_VERSION: '21'
-  REGISTRY: docker.io
+  DOCKER_IMAGE: zhenya465/user-service
 
 permissions:
   contents: read
@@ -79,19 +79,8 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          username: zhenya465
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Extract Docker metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ secrets.DOCKERHUB_USERNAME }}/user-service
-          tags: |
-            type=ref,event=branch
-            type=sha,prefix=
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
@@ -99,5 +88,7 @@ jobs:
           context: .
           file: ./Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: |
+            ${{ env.DOCKER_IMAGE }}:${{ github.ref_name }}
+            ${{ env.DOCKER_IMAGE }}:${{ github.sha }}
+            ${{ env.DOCKER_IMAGE }}:latest
