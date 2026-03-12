@@ -39,7 +39,6 @@ jobs:
         run: mvn -B clean verify -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false
 
       - name: SonarQube analysis
-        if: ${{ secrets.SONAR_TOKEN != '' && secrets.SONAR_HOST_URL != '' && secrets.SONAR_PROJECT_KEY != '' }}
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: >
