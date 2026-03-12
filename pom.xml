@@ -29,7 +29,12 @@
             **/dto/**,
             **/entity/**,
             **/exception/**,
-            **/mapper/*Impl.java
+            **/mapper/*Impl.java,
+            **/model/**,
+            **/repository/**,
+            **/controller/**,
+            **/security/**,
+            **/*Filter.java
         </sonar.coverage.exclusions>
         <sonar.coverage.jacoco.xmlReportPaths>target/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     </properties>
