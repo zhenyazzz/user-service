@@ -1,6 +1,24 @@
 server:
   port: 8080
 
+spring:
+  application:
+    name: user-service
+  profiles:
+    active: dev
+  cache:
+    type: redis
+  data:
+    web:
+      pageable:
+        max-page-size: 100
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+  jpa:
+    defer-datasource-initialization: false
+    hibernate:
+      ddl-auto: validate
+
 app:
   cache:
     default-ttl: 1h
@@ -10,23 +28,5 @@ app:
       cards: 15m
       cards_pages: 15m
       cards_user: 15m
-
-spring:
-  cache:
-    type: redis
-  datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/user_service_db}
-    username: ${SPRING_DATASOURCE_USERNAME:user_service}
-    password: ${SPRING_DATASOURCE_PASSWORD:user_service_secret}
-    driver-class-name: org.postgresql.Driver
-  data:
-    redis:
-      host: ${SPRING_DATA_REDIS_HOST:localhost}
-      port: ${SPRING_DATA_REDIS_PORT:6379}
-      password: ${SPRING_DATA_REDIS_PASSWORD:}
-  liquibase:
-    change-log: classpath:db/changelog/db.changelog-master.yaml
-  jpa:
-    defer-datasource-initialization: false 
-    hibernate:
-      ddl-auto: validate
+  cards:
+    max-per-user: 5
