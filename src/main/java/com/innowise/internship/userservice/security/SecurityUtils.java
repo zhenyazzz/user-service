@@ -13,25 +13,33 @@ import lombok.experimental.UtilityClass;
 
 @UtilityClass
 public class SecurityUtils {
- 
+
+    private static final String USER_NOT_FOUND_MESSAGE = "User not found in security context";
+    
     public Optional<CurrentUser> getCurrentUser() {
         return Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
                 .filter(Authentication::isAuthenticated)
                 .map(Authentication::getPrincipal)
-                .filter(principal -> principal instanceof CurrentUser)
+                .filter(CurrentUser.class::isInstance)
                 .map(CurrentUser.class::cast);
     }
 
     public UUID getCurrentUserId() {
-        return getCurrentUser().map(CurrentUser::userId).orElseThrow(() -> new SecurityContextException("User not found in security context"));
+        return getCurrentUser()
+                .map(CurrentUser::userId)
+                .orElseThrow(() -> new SecurityContextException(USER_NOT_FOUND_MESSAGE));
     }
 
     public String getCurrentUserEmail() {
-        return getCurrentUser().map(CurrentUser::email).orElseThrow(() -> new SecurityContextException("User not found in security context"));
+        return getCurrentUser()
+                .map(CurrentUser::email)
+                .orElseThrow(() -> new SecurityContextException(USER_NOT_FOUND_MESSAGE));
     }
 
     public String getCurrentUserRole() {
-        return getCurrentUser().map(CurrentUser::role).orElseThrow(() -> new SecurityContextException("User not found in security context"));
+        return getCurrentUser()
+                .map(CurrentUser::role)
+                .orElseThrow(() -> new SecurityContextException(USER_NOT_FOUND_MESSAGE));
     }
 
     public boolean isAdmin() {

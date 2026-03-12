@@ -107,9 +107,13 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
-        String message = ex.getRequiredType() != null && ex.getRequiredType().getName().contains("UUID")
-                ? "Invalid UUID format: expected 36 characters (e.g. a0000001-0000-0000-0000-000000000001)"
-                : "Invalid parameter format: " + (ex.getMessage() != null ? ex.getMessage() : ex.getName());
+        String message;
+        if (ex.getRequiredType() != null && ex.getRequiredType().getName().contains("UUID")) {
+            message = "Invalid UUID format: expected 36 characters (e.g. a0000001-0000-0000-0000-000000000001)";
+        } else {
+            String detail = ex.getMessage() != null ? ex.getMessage() : ex.getName();
+            message = "Invalid parameter format: " + detail;
+        }
         log.warn("Parameter type mismatch: {} = {}", ex.getName(), ex.getValue());
         return build(HttpStatus.BAD_REQUEST, "INVALID_PARAMETER", message, null);
     }

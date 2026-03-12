@@ -36,18 +36,16 @@ public class RedisCacheConfig {
     public RedisCacheManagerBuilderCustomizer redisCacheManagerBuilderCustomizer(
             RedisCacheConfiguration defaultCacheConfig,
             CacheProperties cacheProperties) {
-        return (builder) -> {
-            builder
-                    .withCacheConfiguration("users",
-                            defaultCacheConfig.entryTtl(cacheProperties.getTtlForCache("users")))
-                    .withCacheConfiguration("users_pages",
-                            defaultCacheConfig.entryTtl(cacheProperties.getTtlForCache("users_pages")))
-                    .withCacheConfiguration("cards",
-                            defaultCacheConfig.entryTtl(cacheProperties.getTtlForCache("cards")))
-                    .withCacheConfiguration("cards_pages",
-                            defaultCacheConfig.entryTtl(cacheProperties.getTtlForCache("cards_pages")))
-                    .withCacheConfiguration("cards_user",
-                            defaultCacheConfig.entryTtl(cacheProperties.getTtlForCache("cards_user")));
-        };
+        return builder -> builder
+                .withCacheConfiguration("users",
+                        defaultCacheConfig.entryTtl(cacheProperties.getTtlForCache("users")))
+                .withCacheConfiguration("users_pages",
+                        defaultCacheConfig.entryTtl(cacheProperties.getTtlForCache("users_pages")))
+                .withCacheConfiguration("cards",
+                        defaultCacheConfig.entryTtl(cacheProperties.getTtlForCache("cards")))
+                .withCacheConfiguration("cards_pages",
+                        defaultCacheConfig.entryTtl(cacheProperties.getTtlForCache("cards_pages")))
+                .withCacheConfiguration("cards_user",
+                        defaultCacheConfig.entryTtl(cacheProperties.getTtlForCache("cards_user")));
     }
 }
