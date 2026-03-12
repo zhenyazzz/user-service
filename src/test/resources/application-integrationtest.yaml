@@ -6,6 +6,9 @@ spring:
   cache:
     type: none
   datasource:
+    url: jdbc:tc:postgresql:15:///user_service_test
+    username: test
+    password: test
     hikari:
       connection-timeout: 20000
       maximum-pool-size: 5
