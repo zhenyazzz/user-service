@@ -53,11 +53,6 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.CONFLICT, "CARD_ALREADY_EXISTS", ex.getMessage(), null);
     }
 
-    /**
-     * Handles race condition: two concurrent requests create a card with the same number.
-     * Both pass existsByNumber() check, one commits first, the second hits DB unique constraint
-     * and Hibernate throws DataIntegrityViolationException. Without this handler the client gets 500.
-     */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
         log.warn("Data integrity violation: {}", ex.getMessage());

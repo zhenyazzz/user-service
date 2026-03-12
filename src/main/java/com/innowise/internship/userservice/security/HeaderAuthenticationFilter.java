@@ -38,7 +38,6 @@ public class HeaderAuthenticationFilter extends OncePerRequestFilter {
 
         if (userIdHeader != null) {
             try {
-                // Gateway sends X-User-Role already with ROLE_ prefix 
                 CurrentUser currentUser = new CurrentUser(
                     UUID.fromString(userIdHeader),
                     emailHeader,
