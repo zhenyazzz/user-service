@@ -2,7 +2,10 @@ package com.innowise.internship.userservice.dto.response;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
+
+import com.innowise.internship.userservice.model.enums.UserStatus;
 
 public record UserResponse(
         UUID id,
@@ -10,8 +13,9 @@ public record UserResponse(
         String surname,
         LocalDate birthDate,
         String email,
-        Boolean active,
+        UserStatus status,
         Instant createdAt,
-        Instant updatedAt
+        Instant updatedAt,
+        List<PaymentCardResponse> paymentCards
 ) {
 }

@@ -26,9 +26,9 @@ databaseChangeLog:
                   type: VARCHAR(255)
                   constraints: { nullable: false, unique: true }
               - column:
-                  name: active
-                  type: BOOLEAN
-                  defaultValueBoolean: true
+                  name: status
+                  type: VARCHAR(20)
+                  defaultValue: ACTIVE
                   constraints: { nullable: false }
               - column:
                   name: created_at
@@ -47,6 +47,13 @@ databaseChangeLog:
                   name: name
               - column:
                   name: surname
+
+        - createIndex:
+            indexName: idx_users_email
+            tableName: users
+            columns:
+              - column:
+                  name: email
         
         - createTable:
             tableName: payment_cards
@@ -76,9 +83,9 @@ databaseChangeLog:
                   type: DATE
                   constraints: { nullable: false }
               - column:
-                  name: active
-                  type: BOOLEAN
-                  defaultValueBoolean: true
+                  name: status
+                  type: VARCHAR(20)
+                  defaultValue: ACTIVE
                   constraints: { nullable: false }
               - column:
                   name: created_at
@@ -90,10 +97,10 @@ databaseChangeLog:
                   constraints: { nullable: false }
 
         - createIndex:
-            indexName: idx_payment_cards_user_id_active
+            indexName: idx_payment_cards_user_id_status
             tableName: payment_cards
             columns:
               - column:
                   name: user_id
               - column:
-                  name: active
+                  name: status

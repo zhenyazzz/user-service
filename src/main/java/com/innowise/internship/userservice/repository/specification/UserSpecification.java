@@ -4,6 +4,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.util.StringUtils;
 
 import com.innowise.internship.userservice.model.User;
+import com.innowise.internship.userservice.model.enums.UserStatus;
 
 public final class UserSpecification {
 
@@ -11,9 +12,12 @@ public final class UserSpecification {
 
     private UserSpecification() {}
 
-    public static Specification<User> filterByNameAndSurnameAndActive(String name, String surname, Boolean active) {
+    public static Specification<User> buildFilter(String name, String surname) {
         return (root, query, criteriaBuilder) -> {
             var predicate = criteriaBuilder.conjunction();
+
+            predicate = criteriaBuilder.and(predicate,
+                    criteriaBuilder.equal(root.get("status"), UserStatus.ACTIVE));
 
             if (StringUtils.hasText(name)) {
                 String safeName = escapeForLike(name.toLowerCase());
@@ -25,11 +29,6 @@ public final class UserSpecification {
                 String safeSurname = escapeForLike(surname.toLowerCase());
                 predicate = criteriaBuilder.and(predicate,
                     criteriaBuilder.like(criteriaBuilder.lower(root.get("surname")), "%" + safeSurname + "%", LIKE_ESCAPE));
-            }
-
-            if (active != null) {
-                predicate = criteriaBuilder.and(predicate,
-                    criteriaBuilder.equal(root.get("active"), active));
             }
 
             return predicate;

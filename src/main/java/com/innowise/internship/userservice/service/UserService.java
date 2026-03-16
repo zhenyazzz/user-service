@@ -14,13 +14,11 @@ public interface UserService {
 
     UserResponse getUserById(UUID id);
 
-    Page<UserResponse> getAllUsers(String name, String surname, Boolean active, Pageable pageable);
+    Page<UserResponse> getAllUsers(String name, String surname, Pageable pageable);
 
     UserResponse updateUser(UUID id, UserUpdateRequest request);
 
-    UserResponse activateUser(UUID id);
-
-    UserResponse deactivateUser(UUID id);
+    void deleteUser(UUID id);
 
     UUID findIdByEmail(String email);
 }

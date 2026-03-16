@@ -16,6 +16,7 @@ import com.innowise.internship.userservice.dto.request.UserCreateRequest;
 import com.innowise.internship.userservice.dto.response.ErrorResponse;
 import com.innowise.internship.userservice.dto.response.PaymentCardResponse;
 import com.innowise.internship.userservice.dto.response.UserResponse;
+import com.innowise.internship.userservice.model.enums.PaymentCardStatus;
 import com.innowise.internship.userservice.utils.PaymentCardTestDataFactory;
 import com.innowise.internship.userservice.utils.UserTestDataFactory;
 
@@ -54,7 +55,7 @@ class PaymentCardControllerIntegrationTest extends AbstractIntegrationTest {
             assertThat(created.userId()).isEqualTo(userId);
             assertThat(created.number()).isEqualTo(request.number());
             assertThat(created.holder()).isEqualTo(PaymentCardTestDataFactory.DEFAULT_HOLDER);
-            assertThat(created.active()).isTrue();
+            assertThat(created.status()).isEqualTo(PaymentCardStatus.ACTIVE);
 
             webTestClient
                     .get().uri("/cards/{id}", created.id())
@@ -66,6 +67,19 @@ class PaymentCardControllerIntegrationTest extends AbstractIntegrationTest {
                         assertThat(body.id()).isEqualTo(created.id());
                         assertThat(body.userId()).isEqualTo(userId);
                         assertThat(body.number()).isEqualTo(created.number());
+                    });
+
+            webTestClient
+                    .get().uri("/users/{id}", userId)
+                    .headers(h -> withAuth(h, userId))
+                    .exchange()
+                    .expectStatus().isOk()
+                    .expectBody(UserResponse.class)
+                    .value(user -> {
+                        assertThat(user.paymentCards()).hasSize(1);
+                        assertThat(user.paymentCards().get(0).id()).isEqualTo(created.id());
+                        assertThat(user.paymentCards().get(0).number()).isEqualTo(created.number());
+                        assertThat(user.paymentCards().get(0).status()).isEqualTo(PaymentCardStatus.ACTIVE);
                     });
         }
 
@@ -100,6 +114,30 @@ class PaymentCardControllerIntegrationTest extends AbstractIntegrationTest {
                     .expectStatus().isEqualTo(HttpStatus.CONFLICT)
                     .expectBody(ErrorResponse.class)
                     .value(err -> assertThat(err.errorCode()).isEqualTo("CARD_ALREADY_EXISTS"));
+        }
+
+        @Test
+        @DisplayName("when user already has 5 cards creating 6th returns 422 CARD_LIMIT_EXCEEDED")
+        void whenCardLimitExceeded_returns422() {
+            UUID userId = createUserAndGetId();
+            for (int i = 0; i < 5; i++) {
+                PaymentCardCreateRequest req = PaymentCardTestDataFactory.buildPaymentCardCreateRequest(PaymentCardTestDataFactory.uniqueCardNumber());
+                webTestClient
+                        .post().uri("/cards")
+                        .headers(h -> withAuth(h, userId))
+                        .bodyValue(req)
+                        .exchange()
+                        .expectStatus().isCreated();
+            }
+            PaymentCardCreateRequest sixth = PaymentCardTestDataFactory.buildPaymentCardCreateRequest(PaymentCardTestDataFactory.uniqueCardNumber());
+            webTestClient
+                    .post().uri("/cards")
+                    .headers(h -> withAuth(h, userId))
+                    .bodyValue(sixth)
+                    .exchange()
+                    .expectStatus().isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT)
+                    .expectBody(ErrorResponse.class)
+                    .value(err -> assertThat(err.errorCode()).isEqualTo("CARD_LIMIT_EXCEEDED"));
         }
     }
 
@@ -235,12 +273,12 @@ class PaymentCardControllerIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Nested
-    @DisplayName("PATCH /cards/{id}/activate and /cards/{id}/deactivate")
-    class ActivateDeactivate {
+    @DisplayName("DELETE /cards/{id} (soft delete)")
+    class SoftDelete {
 
         @Test
-        @DisplayName("as owner activate then deactivate returns 200 and response body")
-        void asOwner_activateAndDeactivate_returns200AndBody() {
+        @DisplayName("as owner delete returns 204 and getById returns status DELETED")
+        void asOwner_delete_returns204AndGetReturnsDeleted() {
             UUID userId = createUserAndGetId();
             PaymentCardResponse created = webTestClient
                     .post().uri("/cards")
@@ -253,20 +291,24 @@ class PaymentCardControllerIntegrationTest extends AbstractIntegrationTest {
             UUID cardId = created.id();
 
             webTestClient
-                    .patch().uri("/cards/{id}/deactivate", cardId)
+                    .delete().uri("/cards/{id}", cardId)
                     .headers(h -> withAuth(h, userId))
                     .exchange()
-                    .expectStatus().isOk()
-                    .expectBody(PaymentCardResponse.class)
-                    .value(body -> assertThat(body.active()).isFalse());
+                    .expectStatus().isNoContent();
 
             webTestClient
-                    .patch().uri("/cards/{id}/activate", cardId)
+                    .get().uri("/cards/{id}", cardId)
+                    .headers(h -> withAuth(h, userId))
+                    .exchange()
+                    .expectStatus().isNotFound();
+
+            webTestClient
+                    .get().uri("/users/{id}", userId)
                     .headers(h -> withAuth(h, userId))
                     .exchange()
                     .expectStatus().isOk()
-                    .expectBody(PaymentCardResponse.class)
-                    .value(body -> assertThat(body.active()).isTrue());
+                    .expectBody(UserResponse.class)
+                    .value(user -> assertThat(user.paymentCards()).isEmpty());
         }
     }
 }

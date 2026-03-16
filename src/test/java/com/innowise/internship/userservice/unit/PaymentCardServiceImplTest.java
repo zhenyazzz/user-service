@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -22,7 +23,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 
 import com.innowise.internship.userservice.dto.request.PaymentCardCreateRequest;
 import com.innowise.internship.userservice.dto.request.PaymentCardUpdateRequest;
@@ -35,6 +35,8 @@ import com.innowise.internship.userservice.repository.PaymentCardRepository;
 import com.innowise.internship.userservice.mapper.PaymentCardMapper;
 import com.innowise.internship.userservice.model.PaymentCard;
 import com.innowise.internship.userservice.model.User;
+import com.innowise.internship.userservice.model.enums.PaymentCardStatus;
+import com.innowise.internship.userservice.model.enums.UserStatus;
 import com.innowise.internship.userservice.repository.UserRepository;
 import com.innowise.internship.userservice.config.CardProperties;
 import com.innowise.internship.userservice.service.impl.PaymentCardServiceImpl;
@@ -69,9 +71,9 @@ class PaymentCardServiceImplTest {
         PaymentCardCreateRequest request = PaymentCardTestDataFactory.buildPaymentCardCreateRequest();
         PaymentCardResponse response = PaymentCardTestDataFactory.buildPaymentCardResponse(card.getId(), user.getId());
 
-        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(userRepository.findByIdAndStatusForUpdate(user.getId(), UserStatus.ACTIVE)).thenReturn(Optional.of(user));
         when(paymentCardRepository.existsByNumber(request.number())).thenReturn(false);
-        when(paymentCardRepository.countByUserId(user.getId())).thenReturn(0L);
+        when(paymentCardRepository.countByUserIdAndStatus(user.getId(), PaymentCardStatus.ACTIVE)).thenReturn(0L);
         when(cardProperties.getMaxPerUser()).thenReturn(5);
         when(paymentCardMapper.toEntity(request, user)).thenReturn(card);
         when(paymentCardRepository.save(card)).thenReturn(card);
@@ -80,9 +82,9 @@ class PaymentCardServiceImplTest {
         PaymentCardResponse result = paymentCardService.createCard(user.getId(), request);
 
         assertThat(result).isEqualTo(response);
-        verify(userRepository).findById(user.getId());
+        verify(userRepository).findByIdAndStatusForUpdate(user.getId(), UserStatus.ACTIVE);
         verify(paymentCardRepository).existsByNumber(request.number());
-        verify(paymentCardRepository).countByUserId(user.getId());
+        verify(paymentCardRepository).countByUserIdAndStatus(user.getId(), PaymentCardStatus.ACTIVE);
         verify(cardProperties).getMaxPerUser();
         verify(paymentCardMapper).toEntity(request, user);
         verify(paymentCardRepository).save(card);
@@ -95,15 +97,15 @@ class PaymentCardServiceImplTest {
         UUID userId = UUID.randomUUID();
         PaymentCardCreateRequest request = PaymentCardTestDataFactory.buildPaymentCardCreateRequest();
 
-        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+        when(userRepository.findByIdAndStatusForUpdate(userId, UserStatus.ACTIVE)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> paymentCardService.createCard(userId, request))
                 .isInstanceOf(UserNotFoundException.class)
                 .hasMessage("User not found with id: " + userId);
 
-        verify(userRepository).findById(userId);
+        verify(userRepository).findByIdAndStatusForUpdate(userId, UserStatus.ACTIVE);
         verify(paymentCardRepository, never()).existsByNumber(request.number());
-        verify(paymentCardRepository, never()).countByUserId(userId);
+        verify(paymentCardRepository, never()).countByUserIdAndStatus(userId, PaymentCardStatus.ACTIVE);
         verify(paymentCardMapper, never()).toEntity(eq(request), any());
         verify(paymentCardRepository, never()).save(any());
         verify(paymentCardMapper, never()).toResponse(any());
@@ -114,39 +116,39 @@ class PaymentCardServiceImplTest {
     void createCard_whenCardNumberAlreadyExists_throwsPaymentCardAlreadyExistsException() {
         User user = UserTestDataFactory.buildUser();
         PaymentCardCreateRequest request = PaymentCardTestDataFactory.buildPaymentCardCreateRequest();
-        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(userRepository.findByIdAndStatusForUpdate(user.getId(), UserStatus.ACTIVE)).thenReturn(Optional.of(user));
         when(paymentCardRepository.existsByNumber(request.number())).thenReturn(true);
 
         assertThatThrownBy(() -> paymentCardService.createCard(user.getId(), request))
                 .isInstanceOf(PaymentCardAlreadyExistsException.class)
                 .hasMessage("Card with number already exists");
 
-        verify(userRepository).findById(user.getId());
+        verify(userRepository).findByIdAndStatusForUpdate(user.getId(), UserStatus.ACTIVE);
         verify(paymentCardRepository).existsByNumber(request.number());
-        verify(paymentCardRepository, never()).countByUserId(user.getId());
+        verify(paymentCardRepository, never()).countByUserIdAndStatus(user.getId(), PaymentCardStatus.ACTIVE);
         verify(paymentCardMapper, never()).toEntity(request, user);
         verify(paymentCardRepository, never()).save(any());
         verify(paymentCardMapper, never()).toResponse(any());
     }
 
     @Test
-    @DisplayName("createCard when card limit exceeded throws CardLimitExceededException")
+    @DisplayName("createCard when user has 5 cards creating 6th throws CardLimitExceededException")
     void createCard_whenCardLimitExceeded_throwsCardLimitExceededException() {
         User user = UserTestDataFactory.buildUser();
         PaymentCardCreateRequest request = PaymentCardTestDataFactory.buildPaymentCardCreateRequest();
 
-        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(userRepository.findByIdAndStatusForUpdate(user.getId(), UserStatus.ACTIVE)).thenReturn(Optional.of(user));
         when(paymentCardRepository.existsByNumber(request.number())).thenReturn(false);
-        when(paymentCardRepository.countByUserId(user.getId())).thenReturn(5L);
+        when(paymentCardRepository.countByUserIdAndStatus(user.getId(), PaymentCardStatus.ACTIVE)).thenReturn(5L);
         when(cardProperties.getMaxPerUser()).thenReturn(5);
 
         assertThatThrownBy(() -> paymentCardService.createCard(user.getId(), request))
                 .isInstanceOf(CardLimitExceededException.class)
                 .hasMessage("User " + user.getId() + " cannot have more than 5 cards");
 
-        verify(userRepository).findById(user.getId());
+        verify(userRepository).findByIdAndStatusForUpdate(user.getId(), UserStatus.ACTIVE);
         verify(paymentCardRepository).existsByNumber(request.number());
-        verify(paymentCardRepository).countByUserId(user.getId());
+        verify(paymentCardRepository).countByUserIdAndStatus(user.getId(), PaymentCardStatus.ACTIVE);
         verify(cardProperties, times(2)).getMaxPerUser();
         verify(paymentCardMapper, never()).toEntity(request, user);
         verify(paymentCardRepository, never()).save(any());
@@ -160,13 +162,13 @@ class PaymentCardServiceImplTest {
         PaymentCard card = PaymentCardTestDataFactory.buildPaymentCard(user);
         PaymentCardResponse response = PaymentCardTestDataFactory.buildPaymentCardResponse(card);
 
-        when(paymentCardRepository.findByIdWithUser(card.getId())).thenReturn(Optional.of(card));
+        when(paymentCardRepository.findByIdWithUserAndStatus(card.getId(), PaymentCardStatus.ACTIVE)).thenReturn(Optional.of(card));
         when(paymentCardMapper.toResponse(card)).thenReturn(response);
 
         PaymentCardResponse result = paymentCardService.getCardById(card.getId());
 
         assertThat(result).isEqualTo(response);
-        verify(paymentCardRepository).findByIdWithUser(card.getId());
+        verify(paymentCardRepository).findByIdWithUserAndStatus(card.getId(), PaymentCardStatus.ACTIVE);
         verify(paymentCardMapper).toResponse(card);
     }
 
@@ -175,13 +177,13 @@ class PaymentCardServiceImplTest {
     void getCardById_whenCardNotExists_throwsPaymentCardNotFoundException() {
         UUID cardId = UUID.randomUUID();
 
-        when(paymentCardRepository.findByIdWithUser(cardId)).thenReturn(Optional.empty());
+        when(paymentCardRepository.findByIdWithUserAndStatus(cardId, PaymentCardStatus.ACTIVE)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> paymentCardService.getCardById(cardId))
                 .isInstanceOf(PaymentCardNotFoundException.class)
                 .hasMessage("Payment card not found with id: " + cardId);
 
-        verify(paymentCardRepository).findByIdWithUser(cardId);
+        verify(paymentCardRepository).findByIdWithUserAndStatus(cardId, PaymentCardStatus.ACTIVE);
         verify(paymentCardMapper, never()).toResponse(any());
     }
 
@@ -191,12 +193,12 @@ class PaymentCardServiceImplTest {
         User user = UserTestDataFactory.buildUser();
         PaymentCard card = PaymentCardTestDataFactory.buildPaymentCard(user);
 
-        when(paymentCardRepository.findIdByIdAndUser_Id(card.getId(), user.getId())).thenReturn(Optional.of(card.getId()));
+        when(paymentCardRepository.existsByIdAndUser_Id(card.getId(), user.getId())).thenReturn(true);
 
         boolean result = paymentCardService.isCardOwner(user.getId(), card.getId());
 
         assertThat(result).isTrue();
-        verify(paymentCardRepository).findIdByIdAndUser_Id(card.getId(), user.getId());
+        verify(paymentCardRepository).existsByIdAndUser_Id(card.getId(), user.getId());
     }
 
     @Test
@@ -206,12 +208,12 @@ class PaymentCardServiceImplTest {
         User otherUser = UserTestDataFactory.buildUser();
         PaymentCard card = PaymentCardTestDataFactory.buildPaymentCard(owner);
 
-        when(paymentCardRepository.findIdByIdAndUser_Id(card.getId(), otherUser.getId())).thenReturn(Optional.empty());
+        when(paymentCardRepository.existsByIdAndUser_Id(card.getId(), otherUser.getId())).thenReturn(false);
 
         boolean result = paymentCardService.isCardOwner(otherUser.getId(), card.getId());
 
         assertThat(result).isFalse();
-        verify(paymentCardRepository).findIdByIdAndUser_Id(card.getId(), otherUser.getId());
+        verify(paymentCardRepository).existsByIdAndUser_Id(card.getId(), otherUser.getId());
     }
 
     @Test
@@ -220,17 +222,16 @@ class PaymentCardServiceImplTest {
         UUID userId = UUID.randomUUID();
         UUID cardId = UUID.randomUUID();
 
-        when(paymentCardRepository.findIdByIdAndUser_Id(cardId, userId)).thenReturn(Optional.empty());
+        when(paymentCardRepository.existsByIdAndUser_Id(cardId, userId)).thenReturn(false);
 
         boolean result = paymentCardService.isCardOwner(userId, cardId);
 
         assertThat(result).isFalse();
-        verify(paymentCardRepository).findIdByIdAndUser_Id(cardId, userId);
+        verify(paymentCardRepository).existsByIdAndUser_Id(cardId, userId);
     }
 
     @Test
     @DisplayName("getAllCards when cards exist returns response")
-    @SuppressWarnings("unchecked")
     void getAllCards_whenCardsExist_returnsResponse() {
         User user = UserTestDataFactory.buildUser();
         PaymentCard card = PaymentCardTestDataFactory.buildPaymentCard(user);
@@ -238,14 +239,14 @@ class PaymentCardServiceImplTest {
         Pageable pageable = Pageable.ofSize(10);
         Page<PaymentCard> cardsPage = new PageImpl<>(List.of(card), pageable, 1);
 
-        when(paymentCardRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(cardsPage);
+        when(paymentCardRepository.findAllWithUser(eq(PaymentCardStatus.ACTIVE), eq(pageable))).thenReturn(cardsPage);
         when(paymentCardMapper.toResponse(card)).thenReturn(response);
 
-        Page<PaymentCardResponse> result = paymentCardService.getAllCards(null, pageable);
+        Page<PaymentCardResponse> result = paymentCardService.getAllCards(pageable);
 
         assertThat(result.getContent()).hasSize(1).containsExactly(response);
         assertThat(result.getTotalElements()).isEqualTo(1);
-        verify(paymentCardRepository).findAll(any(Specification.class), eq(pageable));
+        verify(paymentCardRepository).findAllWithUser(eq(PaymentCardStatus.ACTIVE), eq(pageable));
         verify(paymentCardMapper).toResponse(card);
     }
     
@@ -257,14 +258,14 @@ class PaymentCardServiceImplTest {
         PaymentCardResponse response = PaymentCardTestDataFactory.buildPaymentCardResponse(card);
         List<PaymentCard> cards = List.of(card);
 
-        when(paymentCardRepository.findAllByUserIdWithUser(user.getId())).thenReturn(cards);
+        when(paymentCardRepository.findAllByUserIdAndStatusWithUser(user.getId(), PaymentCardStatus.ACTIVE)).thenReturn(cards);
         when(paymentCardMapper.toResponseList(cards)).thenReturn(List.of(response));
 
         List<PaymentCardResponse> result = paymentCardService.getCardsByUserId(user.getId());
 
         assertThat(result).hasSize(1).containsExactly(response);
 
-        verify(paymentCardRepository).findAllByUserIdWithUser(user.getId());
+        verify(paymentCardRepository).findAllByUserIdAndStatusWithUser(user.getId(), PaymentCardStatus.ACTIVE);
         verify(paymentCardMapper).toResponseList(cards);
     }
 
@@ -274,13 +275,13 @@ class PaymentCardServiceImplTest {
         UUID userId = UUID.randomUUID();
         List<PaymentCard> emptyList = List.of();
 
-        when(paymentCardRepository.findAllByUserIdWithUser(userId)).thenReturn(emptyList);
+        when(paymentCardRepository.findAllByUserIdAndStatusWithUser(userId, PaymentCardStatus.ACTIVE)).thenReturn(emptyList);
         when(paymentCardMapper.toResponseList(emptyList)).thenReturn(List.of());
 
         List<PaymentCardResponse> result = paymentCardService.getCardsByUserId(userId);
 
         assertThat(result).isEmpty();
-        verify(paymentCardRepository).findAllByUserIdWithUser(userId);
+        verify(paymentCardRepository).findAllByUserIdAndStatusWithUser(userId, PaymentCardStatus.ACTIVE);
         verify(paymentCardMapper).toResponseList(emptyList);
     }
 
@@ -292,14 +293,14 @@ class PaymentCardServiceImplTest {
         PaymentCardUpdateRequest request = PaymentCardTestDataFactory.buildPaymentCardUpdateRequest();
         PaymentCardResponse response = PaymentCardTestDataFactory.buildPaymentCardResponse(card);
 
-        when(paymentCardRepository.findByIdWithUser(card.getId())).thenReturn(Optional.of(card));
+        when(paymentCardRepository.findByIdWithUserAndStatus(card.getId(), PaymentCardStatus.ACTIVE)).thenReturn(Optional.of(card));
         when(paymentCardMapper.toResponse(card)).thenReturn(response);
         when(paymentCardRepository.save(card)).thenReturn(card);
 
         PaymentCardResponse result = paymentCardService.updateCard(card.getId(), request);
 
         assertThat(result).isEqualTo(response);
-        verify(paymentCardRepository).findByIdWithUser(card.getId());
+        verify(paymentCardRepository).findByIdWithUserAndStatus(card.getId(), PaymentCardStatus.ACTIVE);
         verify(paymentCardMapper).updateEntity(request, card);
         verify(paymentCardRepository).save(card);
         verify(paymentCardMapper).toResponse(card);
@@ -311,87 +312,51 @@ class PaymentCardServiceImplTest {
         UUID cardId = UUID.randomUUID();
         PaymentCardUpdateRequest request = PaymentCardTestDataFactory.buildPaymentCardUpdateRequest();
 
-        when(paymentCardRepository.findByIdWithUser(cardId)).thenReturn(Optional.empty());
+        when(paymentCardRepository.findByIdWithUserAndStatus(cardId, PaymentCardStatus.ACTIVE)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> paymentCardService.updateCard(cardId, request))
                 .isInstanceOf(PaymentCardNotFoundException.class)
                 .hasMessage("Payment card not found with id: " + cardId);
 
-        verify(paymentCardRepository).findByIdWithUser(cardId);
+        verify(paymentCardRepository).findByIdWithUserAndStatus(cardId, PaymentCardStatus.ACTIVE);
         verify(paymentCardMapper, never()).updateEntity(eq(request), any());
         verify(paymentCardRepository, never()).save(any());
         verify(paymentCardMapper, never()).toResponse(any());
     }
 
     @Test
-    @DisplayName("activateCard when card exists sets active and returns response")
-    void activateCard_whenCardExists_activates() {
+    @DisplayName("deleteCard (soft delete) when card exists sets status DELETED and returns response")
+    void deleteCard_whenCardExists_setsStatusDeletedAndReturnsResponse() {
         User user = UserTestDataFactory.buildUser();
         PaymentCard card = PaymentCardTestDataFactory.buildPaymentCard(user);
-        card.setActive(false);
+        card.setStatus(PaymentCardStatus.ACTIVE);
         PaymentCardResponse response = PaymentCardTestDataFactory.buildPaymentCardResponse(card);
 
-        when(paymentCardRepository.findByIdWithUser(card.getId())).thenReturn(Optional.of(card));
+        when(paymentCardRepository.findByIdWithUserAndStatus(card.getId(), PaymentCardStatus.ACTIVE)).thenReturn(Optional.of(card));
         when(paymentCardRepository.save(card)).thenReturn(card);
         when(paymentCardMapper.toResponse(card)).thenReturn(response);
 
-        PaymentCardResponse result = paymentCardService.activateCard(card.getId());
+        PaymentCardResponse result = paymentCardService.deleteCard(card.getId());
 
         assertThat(result).isEqualTo(response);
-        assertThat(card.getActive()).isTrue();
-        verify(paymentCardRepository).findByIdWithUser(card.getId());
+        assertThat(card.getStatus()).isEqualTo(PaymentCardStatus.DELETED);
+        verify(paymentCardRepository).findByIdWithUserAndStatus(card.getId(), PaymentCardStatus.ACTIVE);
         verify(paymentCardRepository).save(card);
         verify(paymentCardMapper).toResponse(card);
     }
 
     @Test
-    @DisplayName("activateCard when card not exists throws PaymentCardNotFoundException")
-    void activateCard_whenCardNotExists_throwsPaymentCardNotFoundException() {
+    @DisplayName("deleteCard when card not exists throws PaymentCardNotFoundException")
+    void deleteCard_whenCardNotExists_throwsPaymentCardNotFoundException() {
         UUID cardId = UUID.randomUUID();
 
-        when(paymentCardRepository.findByIdWithUser(cardId)).thenReturn(Optional.empty());
+        when(paymentCardRepository.findByIdWithUserAndStatus(cardId, PaymentCardStatus.ACTIVE)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> paymentCardService.activateCard(cardId))
+        assertThatThrownBy(() -> paymentCardService.deleteCard(cardId))
                 .isInstanceOf(PaymentCardNotFoundException.class)
                 .hasMessage("Payment card not found with id: " + cardId);
 
-        verify(paymentCardRepository).findByIdWithUser(cardId);
-        verify(paymentCardRepository, never()).save(any());
-    }
-
-    @Test
-    @DisplayName("deactivateCard when card exists sets inactive and returns response")
-    void deactivateCard_whenCardExists_deactivates() {
-        User user = UserTestDataFactory.buildUser();
-        PaymentCard card = PaymentCardTestDataFactory.buildPaymentCard(user);
-        card.setActive(true);
-        PaymentCardResponse response = PaymentCardTestDataFactory.buildPaymentCardResponse(card);
-
-        when(paymentCardRepository.findByIdWithUser(card.getId())).thenReturn(Optional.of(card));
-        when(paymentCardRepository.save(card)).thenReturn(card);
-        when(paymentCardMapper.toResponse(card)).thenReturn(response);
-
-        PaymentCardResponse result = paymentCardService.deactivateCard(card.getId());
-
-        assertThat(result).isEqualTo(response);
-        assertThat(card.getActive()).isFalse();
-        verify(paymentCardRepository).findByIdWithUser(card.getId());
-        verify(paymentCardRepository).save(card);
-        verify(paymentCardMapper).toResponse(card);
-    }
-
-    @Test
-    @DisplayName("deactivateCard when card not exists throws PaymentCardNotFoundException")
-    void deactivateCard_whenCardNotExists_throwsPaymentCardNotFoundException() {
-        UUID cardId = UUID.randomUUID();
-
-        when(paymentCardRepository.findByIdWithUser(cardId)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> paymentCardService.deactivateCard(cardId))
-                .isInstanceOf(PaymentCardNotFoundException.class)
-                .hasMessage("Payment card not found with id: " + cardId);
-
-        verify(paymentCardRepository).findByIdWithUser(cardId);
+        verify(paymentCardRepository).findByIdWithUserAndStatus(cardId, PaymentCardStatus.ACTIVE);
         verify(paymentCardRepository, never()).save(any());
     }
 

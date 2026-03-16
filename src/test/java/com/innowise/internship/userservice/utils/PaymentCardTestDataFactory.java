@@ -10,6 +10,7 @@ import com.innowise.internship.userservice.dto.request.PaymentCardUpdateRequest;
 import com.innowise.internship.userservice.dto.response.PaymentCardResponse;
 import com.innowise.internship.userservice.model.PaymentCard;
 import com.innowise.internship.userservice.model.User;
+import com.innowise.internship.userservice.model.enums.PaymentCardStatus;
 
 @UtilityClass
 public class PaymentCardTestDataFactory {
@@ -45,7 +46,7 @@ public class PaymentCardTestDataFactory {
         card.setNumber(DEFAULT_NUMBER);
         card.setHolder(DEFAULT_HOLDER);
         card.setExpirationDate(DEFAULT_EXPIRATION_DATE);
-        card.setActive(true);
+        card.setStatus(PaymentCardStatus.ACTIVE);
         return card;
     }
 
@@ -56,7 +57,7 @@ public class PaymentCardTestDataFactory {
                 card.getNumber(),
                 card.getHolder(),
                 card.getExpirationDate(),
-                card.getActive(),
+                card.getStatus(),
                 card.getCreatedAt(),
                 card.getUpdatedAt()
         );
@@ -69,7 +70,7 @@ public class PaymentCardTestDataFactory {
                 DEFAULT_NUMBER,
                 DEFAULT_HOLDER,
                 DEFAULT_EXPIRATION_DATE,
-                true,
+                PaymentCardStatus.ACTIVE,
                 null,
                 null
         );

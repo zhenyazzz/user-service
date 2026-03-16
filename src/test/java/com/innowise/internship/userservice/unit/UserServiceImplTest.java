@@ -28,6 +28,9 @@ import com.innowise.internship.userservice.exception.user.UserAlreadyExistsExcep
 import com.innowise.internship.userservice.exception.user.UserNotFoundException;
 import com.innowise.internship.userservice.mapper.UserMapper;
 import com.innowise.internship.userservice.model.User;
+import com.innowise.internship.userservice.model.enums.PaymentCardStatus;
+import com.innowise.internship.userservice.model.enums.UserStatus;
+import com.innowise.internship.userservice.repository.PaymentCardRepository;
 import com.innowise.internship.userservice.repository.UserRepository;
 import com.innowise.internship.userservice.service.impl.UserServiceImpl;
 
@@ -44,6 +47,9 @@ class UserServiceImplTest {
     private UserRepository userRepository;
 
     @Mock
+    private PaymentCardRepository paymentCardRepository;
+
+    @Mock
     private UserMapper userMapper;
 
     @InjectMocks
@@ -56,7 +62,8 @@ class UserServiceImplTest {
         User user = UserTestDataFactory.buildUser();
         UserResponse response = UserTestDataFactory.buildUserResponse(user.getId());
 
-        when(userRepository.findIdByEmail(UserTestDataFactory.DEFAULT_EMAIL)).thenReturn(Optional.empty());
+        when(userMapper.normalizeEmail(request.email())).thenReturn(UserTestDataFactory.DEFAULT_EMAIL);
+        when(userRepository.existsByEmail(UserTestDataFactory.DEFAULT_EMAIL)).thenReturn(false);
         when(userMapper.toEntity(request)).thenReturn(user);
         when(userRepository.save(user)).thenReturn(user);
         when(userMapper.toResponse(user)).thenReturn(response);
@@ -64,7 +71,8 @@ class UserServiceImplTest {
         UserResponse result = userService.createUser(request);
 
         assertThat(result).isEqualTo(response);
-        verify(userRepository).findIdByEmail(UserTestDataFactory.DEFAULT_EMAIL);
+        verify(userMapper).normalizeEmail(request.email());
+        verify(userRepository).existsByEmail(UserTestDataFactory.DEFAULT_EMAIL);
         verify(userMapper).toEntity(request);
         verify(userRepository).save(user);
         verify(userMapper).toResponse(user);
@@ -74,13 +82,15 @@ class UserServiceImplTest {
     @DisplayName("createUser when email exists throws UserAlreadyExistsException")
     void createUser_whenEmailExists_throwsUserAlreadyExistsException() {
         UserCreateRequest request = UserTestDataFactory.buildUserCreateRequest();
-        when(userRepository.findIdByEmail(UserTestDataFactory.DEFAULT_EMAIL)).thenReturn(Optional.of(UUID.randomUUID()));
+        when(userMapper.normalizeEmail(request.email())).thenReturn(UserTestDataFactory.DEFAULT_EMAIL);
+        when(userRepository.existsByEmail(UserTestDataFactory.DEFAULT_EMAIL)).thenReturn(true);
 
         assertThatThrownBy(() -> userService.createUser(request))
                 .isInstanceOf(UserAlreadyExistsException.class)
                 .hasMessageContaining(UserTestDataFactory.DEFAULT_EMAIL);
 
-        verify(userRepository).findIdByEmail(UserTestDataFactory.DEFAULT_EMAIL);
+        verify(userMapper).normalizeEmail(request.email());
+        verify(userRepository).existsByEmail(UserTestDataFactory.DEFAULT_EMAIL);
         verify(userRepository, never()).save(any());
     }
 
@@ -89,13 +99,13 @@ class UserServiceImplTest {
     void getUserById_Success() {
         User user = UserTestDataFactory.buildUser();
         UserResponse response = UserTestDataFactory.buildUserResponse(user.getId());
-        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(userRepository.findByIdAndStatus(user.getId(), UserStatus.ACTIVE)).thenReturn(Optional.of(user));
         when(userMapper.toResponse(user)).thenReturn(response);
 
         UserResponse result = userService.getUserById(user.getId());
 
         assertThat(result).isEqualTo(response);
-        verify(userRepository).findById(user.getId());
+        verify(userRepository).findByIdAndStatus(user.getId(), UserStatus.ACTIVE);
         verify(userMapper).toResponse(user);
     }
 
@@ -103,13 +113,13 @@ class UserServiceImplTest {
     @DisplayName("getUserById when user not exists throws UserNotFoundException")
     void getUserById_whenUserNotExists_throwsUserNotFoundException() {
         UUID id = UUID.randomUUID();
-        when(userRepository.findById(id)).thenReturn(Optional.empty());
+        when(userRepository.findByIdAndStatus(id, UserStatus.ACTIVE)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> userService.getUserById(id))
                 .isInstanceOf(UserNotFoundException.class)
                 .hasMessage("User not found with id: " + id);
 
-        verify(userRepository).findById(id);
+        verify(userRepository).findByIdAndStatus(id, UserStatus.ACTIVE);
         verify(userMapper, never()).toResponse(any());
     }
 
@@ -126,7 +136,7 @@ class UserServiceImplTest {
         when(userRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(usersPage);
         when(userMapper.toResponse(user)).thenReturn(response);
 
-        Page<UserResponse> result = userService.getAllUsers(null, null, null, pageable);
+        Page<UserResponse> result = userService.getAllUsers(null, null, pageable);
 
         assertThat(result.getContent()).hasSize(1).containsExactly(response);
         assertThat(result.getTotalElements()).isEqualTo(1);
@@ -141,14 +151,14 @@ class UserServiceImplTest {
         UserUpdateRequest request = UserTestDataFactory.buildUserUpdateRequest();
         UserResponse response = UserTestDataFactory.buildUserResponse(user.getId());
 
-        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(userRepository.findByIdAndStatus(user.getId(), UserStatus.ACTIVE)).thenReturn(Optional.of(user));
         when(userRepository.save(user)).thenReturn(user);
         when(userMapper.toResponse(user)).thenReturn(response);
 
         UserResponse result = userService.updateUser(user.getId(), request);
 
         assertThat(result).isEqualTo(response);
-        verify(userRepository).findById(user.getId());
+        verify(userRepository).findByIdAndStatus(user.getId(), UserStatus.ACTIVE);
         verify(userMapper).updateEntity(request, user);
         verify(userRepository).save(user);
         verify(userMapper).toResponse(user);
@@ -160,123 +170,94 @@ class UserServiceImplTest {
         UUID id = UUID.randomUUID();
         UserUpdateRequest request = UserTestDataFactory.buildUserUpdateRequest();
 
-        when(userRepository.findById(id)).thenReturn(Optional.empty());
+        when(userRepository.findByIdAndStatus(id, UserStatus.ACTIVE)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> userService.updateUser(id, request))
                 .isInstanceOf(UserNotFoundException.class)
                 .hasMessage("User not found with id: " + id);
 
-        verify(userRepository).findById(id);
+        verify(userRepository).findByIdAndStatus(id, UserStatus.ACTIVE);
         verify(userMapper, never()).updateEntity(any(), any());
         verify(userRepository, never()).save(any());
         verify(userMapper, never()).toResponse(any());
     }
 
     @Test
-    @DisplayName("activateUser when user exists sets active and returns response")
-    void activateUser_whenUserExists_returnsResponse() {
+    @DisplayName("deleteUser (soft delete) when user exists sets status DELETED")
+    void deleteUser_whenUserExists_setsStatusDeleted() {
         User user = UserTestDataFactory.buildUser();
-        user.setActive(false);
-        UserResponse response = UserTestDataFactory.buildUserResponse(user);
+        user.setStatus(UserStatus.ACTIVE);
 
-        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(userRepository.findByIdAndStatus(user.getId(), UserStatus.ACTIVE)).thenReturn(Optional.of(user));
+        when(paymentCardRepository.updateStatusByUserId(user.getId(), PaymentCardStatus.DELETED, PaymentCardStatus.ACTIVE)).thenReturn(0);
         when(userRepository.save(user)).thenReturn(user);
-        when(userMapper.toResponse(user)).thenReturn(response);
 
-        UserResponse result = userService.activateUser(user.getId());
+        userService.deleteUser(user.getId());
 
-        assertThat(result).isEqualTo(response);
-        assertThat(user.getActive()).isTrue();
-        verify(userRepository).findById(user.getId());
+        assertThat(user.getStatus()).isEqualTo(UserStatus.DELETED);
+        verify(userRepository).findByIdAndStatus(user.getId(), UserStatus.ACTIVE);
+        verify(paymentCardRepository).updateStatusByUserId(user.getId(), PaymentCardStatus.DELETED, PaymentCardStatus.ACTIVE);
         verify(userRepository).save(user);
-        verify(userMapper).toResponse(user);
     }
 
     @Test
-    @DisplayName("activateUser when user not exists throws UserNotFoundException")
-    void activateUser_whenUserNotExists_throwsUserNotFoundException() {
+    @DisplayName("deleteUser when user not exists throws UserNotFoundException")
+    void deleteUser_whenUserNotExists_throwsUserNotFoundException() {
         UUID id = UUID.randomUUID();
-        when(userRepository.findById(id)).thenReturn(Optional.empty());
+        when(userRepository.findByIdAndStatus(id, UserStatus.ACTIVE)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> userService.activateUser(id))
+        assertThatThrownBy(() -> userService.deleteUser(id))
                 .isInstanceOf(UserNotFoundException.class)
                 .hasMessage("User not found with id: " + id);
 
-        verify(userRepository).findById(id);
-        verify(userRepository, never()).save(any());
-    }
-
-    @Test
-    @DisplayName("deactivateUser when user exists sets inactive and returns response")
-    void deactivateUser_whenUserExists_returnsResponse() {
-        User user = UserTestDataFactory.buildUser();
-        user.setActive(true);
-        UserResponse response = UserTestDataFactory.buildUserResponse(user);
-
-        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
-        when(userRepository.save(user)).thenReturn(user);
-        when(userMapper.toResponse(user)).thenReturn(response);
-
-        UserResponse result = userService.deactivateUser(user.getId());
-
-        assertThat(result).isEqualTo(response);
-        assertThat(user.getActive()).isFalse();
-        verify(userRepository).findById(user.getId());
-        verify(userRepository).save(user);
-        verify(userMapper).toResponse(user);
-    }
-
-    @Test
-    @DisplayName("deactivateUser when user not exists throws UserNotFoundException")
-    void deactivateUser_whenUserNotExists_throwsUserNotFoundException() {
-        UUID id = UUID.randomUUID();
-        when(userRepository.findById(id)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> userService.deactivateUser(id))
-                .isInstanceOf(UserNotFoundException.class)
-                .hasMessage("User not found with id: " + id);
-
-        verify(userRepository).findById(id);
+        verify(userRepository).findByIdAndStatus(id, UserStatus.ACTIVE);
         verify(userRepository, never()).save(any());
     }
 
     @Test
     @DisplayName("findIdByEmail when email exists returns id")
     void findIdByEmail_Success() {
-        String email = UserTestDataFactory.DEFAULT_EMAIL;
+        String email = UserTestDataFactory.NORMALIZED_EMAIL_WHITESPACE;
         UUID id = UUID.randomUUID();
 
-        when(userRepository.findIdByEmail(email)).thenReturn(Optional.of(id));
+        when(userMapper.normalizeEmail(email)).thenReturn(UserTestDataFactory.DEFAULT_EMAIL);
+        when(userRepository.findIdByEmailAndStatus(UserTestDataFactory.DEFAULT_EMAIL, UserStatus.ACTIVE)).thenReturn(Optional.of(id));
 
         UUID result = userService.findIdByEmail(email);
 
         assertThat(result).isEqualTo(id);
-        verify(userRepository).findIdByEmail(email);
+        verify(userMapper).normalizeEmail(email);
+        verify(userRepository).findIdByEmailAndStatus(UserTestDataFactory.DEFAULT_EMAIL, UserStatus.ACTIVE);
     }
 
     @Test
     @DisplayName("findIdByEmail when email not exists throws UserNotFoundException")
     void findIdByEmail_whenEmailNotExists_throwsUserNotFoundException() {
-        String email = UserTestDataFactory.DEFAULT_EMAIL;
+        String email = UserTestDataFactory.NORMALIZED_EMAIL_WHITESPACE;
 
-        when(userRepository.findIdByEmail(email)).thenReturn(Optional.empty());
+        when(userMapper.normalizeEmail(email)).thenReturn(UserTestDataFactory.DEFAULT_EMAIL);
+        when(userRepository.findIdByEmailAndStatus(UserTestDataFactory.DEFAULT_EMAIL, UserStatus.ACTIVE)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> userService.findIdByEmail(email))
                 .isInstanceOf(UserNotFoundException.class)
                 .hasMessage("User not found with email: " + email);
 
-        verify(userRepository).findIdByEmail(email);
+        verify(userMapper).normalizeEmail(email);
+        verify(userRepository).findIdByEmailAndStatus(UserTestDataFactory.DEFAULT_EMAIL, UserStatus.ACTIVE);
     }
 
     @Test
     @DisplayName("findIdByEmail normalizes email (trim, lowerCase) before calling repository")
     void findIdByEmail_normalizesEmailBeforeLookup() {
         UUID id = UUID.randomUUID();
-        when(userRepository.findIdByEmail(UserTestDataFactory.DEFAULT_EMAIL)).thenReturn(Optional.of(id));
+        when(userMapper.normalizeEmail(UserTestDataFactory.NORMALIZED_EMAIL_WHITESPACE))
+                .thenReturn(UserTestDataFactory.DEFAULT_EMAIL);
+        when(userRepository.findIdByEmailAndStatus(UserTestDataFactory.DEFAULT_EMAIL, UserStatus.ACTIVE)).thenReturn(Optional.of(id));
 
         UUID result = userService.findIdByEmail(UserTestDataFactory.NORMALIZED_EMAIL_WHITESPACE);
 
         assertThat(result).isEqualTo(id);
-        verify(userRepository).findIdByEmail(UserTestDataFactory.DEFAULT_EMAIL);
+        verify(userMapper).normalizeEmail(UserTestDataFactory.NORMALIZED_EMAIL_WHITESPACE);
+        verify(userRepository).findIdByEmailAndStatus(UserTestDataFactory.DEFAULT_EMAIL, UserStatus.ACTIVE);
     }
 }

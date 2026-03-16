@@ -1,20 +1,25 @@
 package com.innowise.internship.userservice.utils;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 import lombok.experimental.UtilityClass;
 
 import com.innowise.internship.userservice.dto.request.UserCreateRequest;
 import com.innowise.internship.userservice.dto.request.UserUpdateRequest;
+import com.innowise.internship.userservice.dto.response.PaymentCardResponse;
 import com.innowise.internship.userservice.dto.response.UserResponse;
 import com.innowise.internship.userservice.model.User;
+import com.innowise.internship.userservice.model.enums.UserStatus;
 
 @UtilityClass
 public class UserTestDataFactory {
 
     public final String DEFAULT_NAME = "John";
     public final String DEFAULT_SURNAME = "Doe";
+    public final String NORMALIZED_NAME = "john";
+    public final String NORMALIZED_SURNAME = "doe";
     public final String DEFAULT_EMAIL = "john@example.com";
     public final LocalDate DEFAULT_BIRTH_DATE = null;
     public final String WRONG_EMAIL = "wrong@example.com";
@@ -43,7 +48,7 @@ public class UserTestDataFactory {
         user.setSurname(DEFAULT_SURNAME);
         user.setBirthDate(DEFAULT_BIRTH_DATE);
         user.setEmail(DEFAULT_EMAIL);
-        user.setActive(true);
+        user.setStatus(UserStatus.ACTIVE);
         return user;
     }
 
@@ -54,9 +59,10 @@ public class UserTestDataFactory {
                 DEFAULT_SURNAME,
                 DEFAULT_BIRTH_DATE,
                 DEFAULT_EMAIL,
-                true,
+                UserStatus.ACTIVE,
                 null,
-                null
+                null,
+                List.of()
         );
     }
 
@@ -71,9 +77,10 @@ public class UserTestDataFactory {
                 user.getSurname(),
                 user.getBirthDate(),
                 user.getEmail(),
-                user.getActive(),
+                user.getStatus(),
                 user.getCreatedAt(),
-                user.getUpdatedAt()
+                user.getUpdatedAt(),
+                List.of()
         );
     }
 }

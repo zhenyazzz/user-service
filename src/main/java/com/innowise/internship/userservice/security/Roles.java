@@ -2,7 +2,8 @@ package com.innowise.internship.userservice.security;
 
 public enum Roles {
 
-    ADMIN("ROLE_ADMIN");
+    ADMIN("ROLE_ADMIN"),
+    USER("ROLE_USER");
 
     private final String authority;
 

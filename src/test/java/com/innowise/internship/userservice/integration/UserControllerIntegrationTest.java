@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import com.innowise.internship.userservice.dto.request.UserUpdateRequest;
 import com.innowise.internship.userservice.dto.response.ErrorResponse;
 import com.innowise.internship.userservice.dto.response.UserResponse;
+import com.innowise.internship.userservice.model.enums.UserStatus;
 import com.innowise.internship.userservice.utils.UserTestDataFactory;
 
 @DisplayName("User API integration tests (Controller → Service → Repository → DB)")
@@ -42,9 +43,10 @@ class UserControllerIntegrationTest extends AbstractIntegrationTest {
             assertThat(created).isNotNull();
             assertThat(created.id()).isNotNull();
             assertThat(created.email()).isNotNull();
-            assertThat(created.name()).isEqualTo(UserTestDataFactory.DEFAULT_NAME);
-            assertThat(created.surname()).isEqualTo(UserTestDataFactory.DEFAULT_SURNAME);
-            assertThat(created.active()).isTrue();
+            assertThat(created.name()).isEqualTo(UserTestDataFactory.NORMALIZED_NAME);
+            assertThat(created.surname()).isEqualTo(UserTestDataFactory.NORMALIZED_SURNAME);
+            assertThat(created.status()).isEqualTo(UserStatus.ACTIVE);
+            assertThat(created.paymentCards()).isNotNull().isEmpty();
 
             webTestClient
                     .get().uri("/users/{id}", created.id())
@@ -57,6 +59,7 @@ class UserControllerIntegrationTest extends AbstractIntegrationTest {
                         assertThat(body.email()).isEqualTo(created.email());
                         assertThat(body.name()).isEqualTo(created.name());
                         assertThat(body.surname()).isEqualTo(created.surname());
+                        assertThat(body.paymentCards()).isNotNull();
                     });
         }
 
@@ -147,7 +150,10 @@ class UserControllerIntegrationTest extends AbstractIntegrationTest {
                     .exchange()
                     .expectStatus().isOk()
                     .expectBody(UserResponse.class)
-                    .value(body -> assertThat(body.id()).isEqualTo(userId));
+                    .value(body -> {
+                        assertThat(body.id()).isEqualTo(userId);
+                        assertThat(body.paymentCards()).isNotNull();
+                    });
         }
 
         @Test
@@ -195,8 +201,9 @@ class UserControllerIntegrationTest extends AbstractIntegrationTest {
                     .expectStatus().isOk()
                     .expectBody(UserResponse.class)
                     .value(body -> {
-                        assertThat(body.name()).isEqualTo(updateRequest.name());
-                        assertThat(body.surname()).isEqualTo(updateRequest.surname());
+                        assertThat(body.name()).isEqualTo(UserTestDataFactory.NORMALIZED_NAME);
+                        assertThat(body.surname()).isEqualTo(UserTestDataFactory.NORMALIZED_SURNAME);
+                        assertThat(body.paymentCards()).isNotNull();
                     });
         }
     }
@@ -232,30 +239,26 @@ class UserControllerIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Nested
-    @DisplayName("PATCH /users/{id}/activate and /users/{id}/deactivate")
-    class ActivateDeactivate {
+    @DisplayName("DELETE /users/{id} (soft delete)")
+    class SoftDelete {
 
         @Test
-        @DisplayName("admin deactivate then activate returns 200 and body")
-        void whenAdmin_deactivateAndActivate_returns200AndBody() {
+        @DisplayName("admin soft-delete returns 204 and getById returns status DELETED")
+        void whenAdmin_delete_returns204AndGetReturnsDeleted() {
             UserResponse created = createUser();
             UUID userId = created.id();
 
             webTestClient
-                    .patch().uri("/users/{id}/deactivate", userId)
+                    .delete().uri("/users/{id}", userId)
                     .headers(h -> withAuth(h, userId, "ROLE_ADMIN"))
                     .exchange()
-                    .expectStatus().isOk()
-                    .expectBody(UserResponse.class)
-                    .value(body -> assertThat(body.active()).isFalse());
+                    .expectStatus().isNoContent();
 
             webTestClient
-                    .patch().uri("/users/{id}/activate", userId)
+                    .get().uri("/users/{id}", userId)
                     .headers(h -> withAuth(h, userId, "ROLE_ADMIN"))
                     .exchange()
-                    .expectStatus().isOk()
-                    .expectBody(UserResponse.class)
-                    .value(body -> assertThat(body.active()).isTrue());
+                    .expectStatus().isNotFound();
         }
     }
 }

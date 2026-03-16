@@ -4,9 +4,9 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -23,6 +23,7 @@ import com.innowise.internship.userservice.exception.user.UserAlreadyExistsExcep
 import com.innowise.internship.userservice.exception.user.UserNotFoundException;
 
 import jakarta.validation.ConstraintViolationException;
+
 import lombok.extern.slf4j.Slf4j;
 
 @RestControllerAdvice
@@ -38,7 +39,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(CardLimitExceededException.class)
     public ResponseEntity<ErrorResponse> handleCardLimitExceeded(CardLimitExceededException ex) {
         log.warn("Card limit exceeded: {}", ex.getMessage());
-        return build(HttpStatus.BAD_REQUEST, "CARD_LIMIT_EXCEEDED", ex.getMessage(), null);
+        return build(HttpStatus.UNPROCESSABLE_ENTITY, "CARD_LIMIT_EXCEEDED", ex.getMessage(), null);
     }
 
     @ExceptionHandler(UserAlreadyExistsException.class)

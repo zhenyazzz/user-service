@@ -4,13 +4,15 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
+import com.innowise.internship.userservice.model.enums.PaymentCardStatus;
+
 public record PaymentCardResponse(
         UUID id,
         UUID userId,
         String number,
         String holder,
         LocalDate expirationDate,
-        Boolean active,
+        PaymentCardStatus status,
         Instant createdAt,
         Instant updatedAt
 ) {

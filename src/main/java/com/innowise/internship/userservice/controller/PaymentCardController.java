@@ -8,15 +8,14 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.innowise.internship.userservice.dto.request.PaymentCardCreateRequest;
@@ -26,6 +25,7 @@ import com.innowise.internship.userservice.security.SecurityUtils;
 import com.innowise.internship.userservice.service.PaymentCardService;
 
 import jakarta.validation.Valid;
+
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -51,9 +51,8 @@ public class PaymentCardController {
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Page<PaymentCardResponse>> getAll(
-            @RequestParam(required = false) Boolean active,
-            @PageableDefault(size = 20) Pageable pageable) {
-        return ResponseEntity.ok(paymentCardService.getAllCards(active, pageable));
+            @PageableDefault(size = 20, page = 0) Pageable pageable) {
+        return ResponseEntity.ok(paymentCardService.getAllCards(pageable));
     }
 
     @GetMapping("/{id}")
@@ -70,15 +69,10 @@ public class PaymentCardController {
         return ResponseEntity.ok(paymentCardService.updateCard(id, request));
     }
 
-    @PatchMapping("/{id}/activate")
+    @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or @paymentCardService.isCardOwner(authentication.principal.userId(), #id)")
-    public ResponseEntity<PaymentCardResponse> activate(@PathVariable UUID id) {
-        return ResponseEntity.ok(paymentCardService.activateCard(id));
-    }
-
-    @PatchMapping("/{id}/deactivate")
-    @PreAuthorize("hasRole('ADMIN') or @paymentCardService.isCardOwner(authentication.principal.userId(), #id)")
-    public ResponseEntity<PaymentCardResponse> deactivate(@PathVariable UUID id) {
-        return ResponseEntity.ok(paymentCardService.deactivateCard(id));
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        paymentCardService.deleteCard(id);
+        return ResponseEntity.noContent().build();
     }
 }
