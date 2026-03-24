@@ -1,0 +1,32 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: user-service
+  profiles:
+    active: dev
+  cache:
+    type: redis
+  data:
+    web:
+      pageable:
+        max-page-size: 100
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+  jpa:
+    defer-datasource-initialization: false
+    hibernate:
+      ddl-auto: validate
+
+app:
+  cache:
+    default-ttl: 1h
+    cache-ttls:
+      users: 7d
+      users_pages: 15m
+      cards: 15m
+      cards_pages: 15m
+      cards_user: 15m
+  cards:
+    max-per-user: 5
