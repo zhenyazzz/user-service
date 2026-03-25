@@ -20,6 +20,8 @@ spring:
       ddl-auto: validate
 
 app:
+  cards:
+    max-per-user: 5
   cache:
     default-ttl: 1h
     cache-ttls:
@@ -28,5 +30,4 @@ app:
       cards: 15m
       cards_pages: 15m
       cards_user: 15m
-  cards:
-    max-per-user: 5
+

@@ -31,7 +31,7 @@ public abstract class AbstractIntegrationTest {
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-User-Id", userId.toString());
         headers.set("X-User-Email", "user@example.com");
-        headers.set("X-User-Role", role != null ? role : "ROLE_USER");
+        headers.set("X-User-Roles", role != null ? role : "ROLE_USER");
         return headers;
     }
 
