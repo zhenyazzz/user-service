@@ -8,6 +8,7 @@ import lombok.experimental.UtilityClass;
 
 import com.innowise.internship.userservice.dto.request.UserCreateRequest;
 import com.innowise.internship.userservice.dto.request.UserUpdateRequest;
+import com.innowise.internship.userservice.dto.internal.InternalUserResponse;
 import com.innowise.internship.userservice.dto.response.PaymentCardResponse;
 import com.innowise.internship.userservice.dto.response.UserResponse;
 import com.innowise.internship.userservice.model.User;
@@ -82,5 +83,9 @@ public class UserTestDataFactory {
                 user.getUpdatedAt(),
                 List.of()
         );
+    }
+
+    public InternalUserResponse buildInternalUserResponse(UUID id) {
+        return new InternalUserResponse(id, DEFAULT_NAME, DEFAULT_SURNAME, DEFAULT_BIRTH_DATE, DEFAULT_EMAIL);
     }
 }

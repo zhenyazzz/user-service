@@ -6,7 +6,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -52,7 +51,7 @@ public class HeaderAuthenticationFilter extends OncePerRequestFilter {
 
                 var authorities = roles.stream()
                     .map(SimpleGrantedAuthority::new)
-                    .collect(Collectors.toList());
+                    .toList();
 
                 UsernamePasswordAuthenticationToken auth =
                     new UsernamePasswordAuthenticationToken(currentUser, null, authorities);
@@ -78,7 +77,7 @@ public class HeaderAuthenticationFilter extends OncePerRequestFilter {
                     .filter(r -> r.matches(role))
                     .map(Roles::getAuthority))
             .distinct()
-            .collect(Collectors.toList());
+            .toList();
     }
 
     private void sendInvalidAuthHeaderResponse(HttpServletResponse response) throws IOException {

@@ -42,8 +42,11 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    @CacheEvict(value = "users_pages", allEntries = true)
-    @CachePut(value = "users", key = "#result.id")
+    @Caching(evict = {
+            @CacheEvict(value = "users_pages", allEntries = true)
+    }, put = {
+            @CachePut(value = "users", key = "#result.id")
+    })
     public UserResponse createUser(UserCreateRequest request) {
         String email = userMapper.normalizeEmail(request.email());
         if (userRepository.existsByEmail(email)) {
@@ -74,9 +77,10 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     @Caching(evict = {
-        @CacheEvict(value = "users_pages", allEntries = true)
+            @CacheEvict(value = "users_pages", allEntries = true),
+            @CacheEvict(value = "internal_users", key = "#id")
     }, put = {
-        @CachePut(value = "users", key = "#id")
+            @CachePut(value = "users", key = "#id")
     })
     public UserResponse updateUser(UUID id, UserUpdateRequest request) {
         User user = findUserOrThrow(id);
@@ -87,9 +91,10 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     @Caching(evict = {
-        @CacheEvict(value = "users_pages", allEntries = true),
-        @CacheEvict(value = "users", key = "#id"),
-        @CacheEvict(value = {"cards", "cards_pages", "cards_user"}, allEntries = true)
+            @CacheEvict(value = "users_pages", allEntries = true),
+            @CacheEvict(value = "internal_users", key = "#id"),
+            @CacheEvict(value = "users", key = "#id"),
+            @CacheEvict(value = {"cards", "cards_pages", "cards_user"}, allEntries = true)
     })
     public void deleteUser(UUID id) {
         User user = findUserOrThrow(id);
@@ -102,7 +107,9 @@ public class UserServiceImpl implements UserService {
     @Transactional
     @Caching(evict = {
             @CacheEvict(value = "users_pages", allEntries = true),
-            @CacheEvict(value = {"cards", "cards_pages", "cards_user"}, allEntries = true)
+            @CacheEvict(value = "internal_users", key = "#id"),
+            @CacheEvict(value = "cards_user", key = "#id"),
+            @CacheEvict(value = "cards_pages", allEntries = true)
     }, put = {
             @CachePut(value = "users", key = "#id")
     })
@@ -126,6 +133,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "internal_users", key = "#id")
     public InternalUserResponse getInternalUserById(UUID id) {
         User user = findUserOrThrow(id);
         return userMapper.toInternalResponse(user);

@@ -27,6 +27,7 @@ app:
     cache-ttls:
       users: 7d
       users_pages: 15m
+      internal_users: 7d
       cards: 15m
       cards_pages: 15m
       cards_user: 15m
