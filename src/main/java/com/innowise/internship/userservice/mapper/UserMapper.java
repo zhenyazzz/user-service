@@ -10,6 +10,7 @@ import org.mapstruct.NullValuePropertyMappingStrategy;
 
 import com.innowise.internship.userservice.dto.request.UserCreateRequest;
 import com.innowise.internship.userservice.dto.request.UserUpdateRequest;
+import com.innowise.internship.userservice.dto.internal.InternalUserResponse;
 import com.innowise.internship.userservice.dto.response.UserResponse;
 import com.innowise.internship.userservice.model.PaymentCard;
 import com.innowise.internship.userservice.model.User;
@@ -30,6 +31,13 @@ public interface UserMapper {
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "email", expression = "java(normalizeEmail(request.email()))")
     User toEntity(UserCreateRequest request);
+
+    @Mapping(target = "id", source = "user.id")
+    @Mapping(target = "email", source = "user.email")
+    @Mapping(target = "name", source = "user.name")
+    @Mapping(target = "surname", source = "user.surname")
+    @Mapping(target = "birthDate", source = "user.birthDate")
+    InternalUserResponse toInternalResponse(User user);
 
     @Mapping(target = "paymentCards", source = "activeCards")
     UserResponse toResponse(User user, List<PaymentCard> activeCards);

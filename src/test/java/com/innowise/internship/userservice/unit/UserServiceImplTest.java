@@ -24,6 +24,7 @@ import org.springframework.data.jpa.domain.Specification;
 import com.innowise.internship.userservice.dto.request.UserCreateRequest;
 import com.innowise.internship.userservice.dto.request.UserUpdateRequest;
 import com.innowise.internship.userservice.dto.response.UserResponse;
+import com.innowise.internship.userservice.exception.user.InvalidUserStateException;
 import com.innowise.internship.userservice.exception.user.UserAlreadyExistsException;
 import com.innowise.internship.userservice.exception.user.UserNotFoundException;
 import com.innowise.internship.userservice.mapper.UserMapper;
@@ -211,6 +212,52 @@ class UserServiceImplTest {
                 .hasMessage("User not found with id: " + id);
 
         verify(userRepository).findByIdAndStatus(id, UserStatus.ACTIVE);
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("restoreUser when user is DELETED sets ACTIVE and reactivates cards")
+    void restoreUser_whenDeleted_setsActive() {
+        User user = UserTestDataFactory.buildUser();
+        user.setStatus(UserStatus.DELETED);
+        UserResponse response = UserTestDataFactory.buildUserResponse(user.getId());
+
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(paymentCardRepository.updateStatusByUserId(user.getId(), PaymentCardStatus.ACTIVE, PaymentCardStatus.DELETED)).thenReturn(1);
+        when(userRepository.save(user)).thenReturn(user);
+        when(userMapper.toResponse(user)).thenReturn(response);
+
+        UserResponse result = userService.restoreUser(user.getId());
+
+        assertThat(result).isEqualTo(response);
+        assertThat(user.getStatus()).isEqualTo(UserStatus.ACTIVE);
+        verify(userRepository).findById(user.getId());
+        verify(paymentCardRepository).updateStatusByUserId(user.getId(), PaymentCardStatus.ACTIVE, PaymentCardStatus.DELETED);
+        verify(userRepository).save(user);
+    }
+
+    @Test
+    @DisplayName("restoreUser when user id unknown throws UserNotFoundException")
+    void restoreUser_whenMissing_throwsNotFound() {
+        UUID id = UUID.randomUUID();
+        when(userRepository.findById(id)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.restoreUser(id))
+                .isInstanceOf(UserNotFoundException.class)
+                .hasMessage("User not found with id: " + id);
+    }
+
+    @Test
+    @DisplayName("restoreUser when user is ACTIVE throws InvalidUserStateException")
+    void restoreUser_whenNotDeleted_throwsInvalidState() {
+        User user = UserTestDataFactory.buildUser();
+        user.setStatus(UserStatus.ACTIVE);
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> userService.restoreUser(user.getId()))
+                .isInstanceOf(InvalidUserStateException.class)
+                .hasMessageContaining("not deleted");
+
         verify(userRepository, never()).save(any());
     }
 

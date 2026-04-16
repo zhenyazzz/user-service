@@ -19,6 +19,7 @@ import com.innowise.internship.userservice.exception.card.CardLimitExceededExcep
 import com.innowise.internship.userservice.exception.card.PaymentCardAlreadyExistsException;
 import com.innowise.internship.userservice.exception.card.PaymentCardNotFoundException;
 import com.innowise.internship.userservice.exception.security.SecurityContextException;
+import com.innowise.internship.userservice.exception.user.InvalidUserStateException;
 import com.innowise.internship.userservice.exception.user.UserAlreadyExistsException;
 import com.innowise.internship.userservice.exception.user.UserNotFoundException;
 
@@ -39,7 +40,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(CardLimitExceededException.class)
     public ResponseEntity<ErrorResponse> handleCardLimitExceeded(CardLimitExceededException ex) {
         log.warn("Card limit exceeded: {}", ex.getMessage());
-        return build(HttpStatus.UNPROCESSABLE_ENTITY, "CARD_LIMIT_EXCEEDED", ex.getMessage(), null);
+        return build(HttpStatus.UNPROCESSABLE_CONTENT, "CARD_LIMIT_EXCEEDED", ex.getMessage(), null);
+    }
+
+    @ExceptionHandler(InvalidUserStateException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidUserState(InvalidUserStateException ex) {
+        log.warn("Invalid user state: {}", ex.getMessage());
+        return build(HttpStatus.CONFLICT, "INVALID_USER_STATE", ex.getMessage(), null);
     }
 
     @ExceptionHandler(UserAlreadyExistsException.class)
