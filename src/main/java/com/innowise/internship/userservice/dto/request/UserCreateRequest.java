@@ -1,13 +1,18 @@
 package com.innowise.internship.userservice.dto.request;
 
 import java.time.LocalDate;
+import java.util.UUID;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Size;
 
 public record UserCreateRequest(
+        @NotNull(message = "User ID is required")
+        UUID id,
+        
         @NotBlank(message = "Name is required")
         @Size(max = 100, message = "Name must not exceed 100 characters")
         String name,

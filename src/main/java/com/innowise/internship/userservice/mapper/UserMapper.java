@@ -15,7 +15,6 @@ import com.innowise.internship.userservice.dto.response.UserResponse;
 import com.innowise.internship.userservice.model.PaymentCard;
 import com.innowise.internship.userservice.model.User;
 import com.innowise.internship.userservice.model.enums.PaymentCardStatus;
-import com.innowise.internship.userservice.model.enums.UserStatus;
 
 @Mapper(componentModel = "spring", uses = PaymentCardMapper.class)
 public interface UserMapper {
@@ -24,7 +23,7 @@ public interface UserMapper {
         return email == null ? null : email.trim().toLowerCase();
     }
 
-    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "id", source = "id")
     @Mapping(target = "paymentCards", ignore = true)
     @Mapping(target = "status", expression = "java(UserStatus.ACTIVE)")
     @Mapping(target = "createdAt", ignore = true)

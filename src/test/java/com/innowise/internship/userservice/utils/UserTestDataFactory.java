@@ -27,11 +27,15 @@ public class UserTestDataFactory {
     public final String NORMALIZED_EMAIL_WHITESPACE = "  John@Example.COM  ";
 
     public UserCreateRequest buildUserCreateRequest() {
-        return new UserCreateRequest(DEFAULT_NAME, DEFAULT_SURNAME, DEFAULT_BIRTH_DATE, DEFAULT_EMAIL);
+        return buildUserCreateRequest(UUID.randomUUID(), DEFAULT_EMAIL);
     }
 
     public UserCreateRequest buildUserCreateRequest(String email) {
-        return new UserCreateRequest(DEFAULT_NAME, DEFAULT_SURNAME, DEFAULT_BIRTH_DATE, email);
+        return buildUserCreateRequest(UUID.randomUUID(), email);
+    }
+
+    public UserCreateRequest buildUserCreateRequest(UUID userId, String email) {
+        return new UserCreateRequest(userId, DEFAULT_NAME, DEFAULT_SURNAME, DEFAULT_BIRTH_DATE, email);
     }
 
     public UserUpdateRequest buildUserUpdateRequest() {

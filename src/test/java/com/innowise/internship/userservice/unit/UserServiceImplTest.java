@@ -21,12 +21,15 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
+import jakarta.persistence.EntityManager;
+
 import com.innowise.internship.userservice.dto.internal.InternalUserResponse;
 import com.innowise.internship.userservice.dto.request.UserCreateRequest;
 import com.innowise.internship.userservice.dto.request.UserUpdateRequest;
 import com.innowise.internship.userservice.dto.response.UserResponse;
 import com.innowise.internship.userservice.exception.user.InvalidUserStateException;
 import com.innowise.internship.userservice.exception.user.UserAlreadyExistsException;
+import com.innowise.internship.userservice.exception.user.UserIdAlreadyExistsException;
 import com.innowise.internship.userservice.exception.user.UserNotFoundException;
 import com.innowise.internship.userservice.mapper.UserMapper;
 import com.innowise.internship.userservice.model.User;
@@ -54,20 +57,24 @@ class UserServiceImplTest {
     @Mock
     private UserMapper userMapper;
 
+    @Mock
+    private EntityManager entityManager;
+
     @InjectMocks
     private UserServiceImpl userService;
 
     @Test
     @DisplayName("createUser when email is free saves and returns response")
     void createUser_Success() {
-        UserCreateRequest request = UserTestDataFactory.buildUserCreateRequest();
-        User user = UserTestDataFactory.buildUser();
+        UUID userId = UUID.randomUUID();
+        UserCreateRequest request = UserTestDataFactory.buildUserCreateRequest(userId, UserTestDataFactory.DEFAULT_EMAIL);
+        User user = UserTestDataFactory.buildUser(userId);
         UserResponse response = UserTestDataFactory.buildUserResponse(user.getId());
 
         when(userMapper.normalizeEmail(request.email())).thenReturn(UserTestDataFactory.DEFAULT_EMAIL);
         when(userRepository.existsByEmail(UserTestDataFactory.DEFAULT_EMAIL)).thenReturn(false);
+        when(userRepository.existsById(userId)).thenReturn(false);
         when(userMapper.toEntity(request)).thenReturn(user);
-        when(userRepository.save(user)).thenReturn(user);
         when(userMapper.toResponse(user)).thenReturn(response);
 
         UserResponse result = userService.createUser(request);
@@ -75,8 +82,9 @@ class UserServiceImplTest {
         assertThat(result).isEqualTo(response);
         verify(userMapper).normalizeEmail(request.email());
         verify(userRepository).existsByEmail(UserTestDataFactory.DEFAULT_EMAIL);
+        verify(userRepository).existsById(userId);
         verify(userMapper).toEntity(request);
-        verify(userRepository).save(user);
+        verify(entityManager).persist(user);
         verify(userMapper).toResponse(user);
     }
 
@@ -93,7 +101,26 @@ class UserServiceImplTest {
 
         verify(userMapper).normalizeEmail(request.email());
         verify(userRepository).existsByEmail(UserTestDataFactory.DEFAULT_EMAIL);
-        verify(userRepository, never()).save(any());
+        verify(userRepository, never()).existsById(any());
+        verify(entityManager, never()).persist(any());
+    }
+
+    @Test
+    @DisplayName("createUser when user id already exists throws UserIdAlreadyExistsException")
+    void createUser_whenUserIdExists_throwsUserIdAlreadyExistsException() {
+        UUID userId = UUID.randomUUID();
+        UserCreateRequest request = UserTestDataFactory.buildUserCreateRequest(userId, UserTestDataFactory.DEFAULT_EMAIL);
+        when(userMapper.normalizeEmail(request.email())).thenReturn(UserTestDataFactory.DEFAULT_EMAIL);
+        when(userRepository.existsByEmail(UserTestDataFactory.DEFAULT_EMAIL)).thenReturn(false);
+        when(userRepository.existsById(userId)).thenReturn(true);
+
+        assertThatThrownBy(() -> userService.createUser(request))
+                .isInstanceOf(UserIdAlreadyExistsException.class)
+                .hasMessageContaining(userId.toString());
+
+        verify(userRepository).existsById(userId);
+        verify(userMapper, never()).toEntity(any());
+        verify(entityManager, never()).persist(any());
     }
 
     @Test

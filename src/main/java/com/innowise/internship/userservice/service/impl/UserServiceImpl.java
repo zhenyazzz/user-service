@@ -14,12 +14,15 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.persistence.EntityManager;
+
 import com.innowise.internship.userservice.dto.internal.InternalUserResponse;
 import com.innowise.internship.userservice.dto.request.UserCreateRequest;
 import com.innowise.internship.userservice.dto.request.UserUpdateRequest;
 import com.innowise.internship.userservice.dto.response.UserResponse;
 import com.innowise.internship.userservice.exception.user.InvalidUserStateException;
 import com.innowise.internship.userservice.exception.user.UserAlreadyExistsException;
+import com.innowise.internship.userservice.exception.user.UserIdAlreadyExistsException;
 import com.innowise.internship.userservice.exception.user.UserNotFoundException;
 import com.innowise.internship.userservice.mapper.UserMapper;
 import com.innowise.internship.userservice.model.User;
@@ -39,6 +42,7 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final PaymentCardRepository paymentCardRepository;
     private final UserMapper userMapper;
+    private final EntityManager entityManager;
 
     @Override
     @Transactional
@@ -52,8 +56,13 @@ public class UserServiceImpl implements UserService {
         if (userRepository.existsByEmail(email)) {
             throw new UserAlreadyExistsException(email);
         }
+        if (userRepository.existsById(request.id())) {
+            throw new UserIdAlreadyExistsException(request.id());
+        }
 
-        return userMapper.toResponse(userRepository.save(userMapper.toEntity(request)));
+        User user = userMapper.toEntity(request);
+        entityManager.persist(user);
+        return userMapper.toResponse(user);
     }
 
     @Override

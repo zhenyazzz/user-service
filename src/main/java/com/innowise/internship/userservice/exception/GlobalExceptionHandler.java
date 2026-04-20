@@ -21,6 +21,7 @@ import com.innowise.internship.userservice.exception.card.PaymentCardNotFoundExc
 import com.innowise.internship.userservice.exception.security.SecurityContextException;
 import com.innowise.internship.userservice.exception.user.InvalidUserStateException;
 import com.innowise.internship.userservice.exception.user.UserAlreadyExistsException;
+import com.innowise.internship.userservice.exception.user.UserIdAlreadyExistsException;
 import com.innowise.internship.userservice.exception.user.UserNotFoundException;
 
 import jakarta.validation.ConstraintViolationException;
@@ -53,6 +54,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleUserAlreadyExists(UserAlreadyExistsException ex) {
         log.warn("User already exists: {}", ex.getMessage());
         return build(HttpStatus.CONFLICT, "USER_ALREADY_EXISTS", "User with this email already exists", null);
+    }
+
+    @ExceptionHandler(UserIdAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleUserIdAlreadyExists(UserIdAlreadyExistsException ex) {
+        log.warn("User id conflict: {}", ex.getMessage());
+        return build(HttpStatus.CONFLICT, "USER_ID_ALREADY_EXISTS", ex.getMessage(), null);
     }
 
     @ExceptionHandler(PaymentCardAlreadyExistsException.class)
