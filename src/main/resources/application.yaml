@@ -32,3 +32,12 @@ app:
       cards_pages: 15m
       cards_user: 15m
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
