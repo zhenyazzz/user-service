@@ -1,9 +1,10 @@
 package com.innowise.internship.userservice.security;
 
+import java.util.List;
 import java.util.UUID;
 
 public record CurrentUser(
-    UUID userId, 
+    UUID userId,
     String email,
-    String role
+    List<String> roles
 ) {}

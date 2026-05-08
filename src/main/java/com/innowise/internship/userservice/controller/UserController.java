@@ -1,5 +1,6 @@
 package com.innowise.internship.userservice.controller;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.innowise.internship.userservice.dto.internal.InternalUserResponse;
 import com.innowise.internship.userservice.dto.request.UserCreateRequest;
 import com.innowise.internship.userservice.dto.request.UserUpdateRequest;
 import com.innowise.internship.userservice.dto.response.UserResponse;
@@ -52,6 +54,16 @@ public class UserController {
         return ResponseEntity.ok(id);
     }
 
+    @GetMapping("/internal/{id}")
+    public ResponseEntity<InternalUserResponse> getInternalById(@PathVariable UUID id) {
+        return ResponseEntity.ok(userService.getInternalUserById(id));
+    }
+
+    @PostMapping("/internal/by-ids")
+    public List<InternalUserResponse> getInternalByIds(@RequestBody(required = false) List<UUID> ids) {
+        return userService.getInternalUsersByIds(ids == null ? List.of() : ids);
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or authentication.principal.userId() == #id")
     public ResponseEntity<UserResponse> getById(@PathVariable UUID id) {
@@ -80,5 +92,11 @@ public class UserController {
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         userService.deleteUser(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/restore")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<UserResponse> restore(@PathVariable UUID id) {
+        return ResponseEntity.ok(userService.restoreUser(id));
     }
 }

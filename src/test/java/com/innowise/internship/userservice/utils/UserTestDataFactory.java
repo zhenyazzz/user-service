@@ -8,6 +8,7 @@ import lombok.experimental.UtilityClass;
 
 import com.innowise.internship.userservice.dto.request.UserCreateRequest;
 import com.innowise.internship.userservice.dto.request.UserUpdateRequest;
+import com.innowise.internship.userservice.dto.internal.InternalUserResponse;
 import com.innowise.internship.userservice.dto.response.PaymentCardResponse;
 import com.innowise.internship.userservice.dto.response.UserResponse;
 import com.innowise.internship.userservice.model.User;
@@ -26,11 +27,15 @@ public class UserTestDataFactory {
     public final String NORMALIZED_EMAIL_WHITESPACE = "  John@Example.COM  ";
 
     public UserCreateRequest buildUserCreateRequest() {
-        return new UserCreateRequest(DEFAULT_NAME, DEFAULT_SURNAME, DEFAULT_BIRTH_DATE, DEFAULT_EMAIL);
+        return buildUserCreateRequest(UUID.randomUUID(), DEFAULT_EMAIL);
     }
 
     public UserCreateRequest buildUserCreateRequest(String email) {
-        return new UserCreateRequest(DEFAULT_NAME, DEFAULT_SURNAME, DEFAULT_BIRTH_DATE, email);
+        return buildUserCreateRequest(UUID.randomUUID(), email);
+    }
+
+    public UserCreateRequest buildUserCreateRequest(UUID userId, String email) {
+        return new UserCreateRequest(userId, DEFAULT_NAME, DEFAULT_SURNAME, DEFAULT_BIRTH_DATE, email);
     }
 
     public UserUpdateRequest buildUserUpdateRequest() {
@@ -82,5 +87,9 @@ public class UserTestDataFactory {
                 user.getUpdatedAt(),
                 List.of()
         );
+    }
+
+    public InternalUserResponse buildInternalUserResponse(UUID id) {
+        return new InternalUserResponse(id, DEFAULT_NAME, DEFAULT_SURNAME, DEFAULT_BIRTH_DATE, DEFAULT_EMAIL);
     }
 }

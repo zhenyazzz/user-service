@@ -41,6 +41,8 @@ public class RedisCacheConfig {
                         defaultCacheConfig.entryTtl(cacheProperties.getTtlForCache("users")))
                 .withCacheConfiguration("users_pages",
                         defaultCacheConfig.entryTtl(cacheProperties.getTtlForCache("users_pages")))
+                .withCacheConfiguration("internal_users",
+                        defaultCacheConfig.entryTtl(cacheProperties.getTtlForCache("internal_users")))
                 .withCacheConfiguration("cards",
                         defaultCacheConfig.entryTtl(cacheProperties.getTtlForCache("cards")))
                 .withCacheConfiguration("cards_pages",

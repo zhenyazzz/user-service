@@ -19,7 +19,9 @@ import com.innowise.internship.userservice.exception.card.CardLimitExceededExcep
 import com.innowise.internship.userservice.exception.card.PaymentCardAlreadyExistsException;
 import com.innowise.internship.userservice.exception.card.PaymentCardNotFoundException;
 import com.innowise.internship.userservice.exception.security.SecurityContextException;
+import com.innowise.internship.userservice.exception.user.InvalidUserStateException;
 import com.innowise.internship.userservice.exception.user.UserAlreadyExistsException;
+import com.innowise.internship.userservice.exception.user.UserIdAlreadyExistsException;
 import com.innowise.internship.userservice.exception.user.UserNotFoundException;
 
 import jakarta.validation.ConstraintViolationException;
@@ -39,13 +41,25 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(CardLimitExceededException.class)
     public ResponseEntity<ErrorResponse> handleCardLimitExceeded(CardLimitExceededException ex) {
         log.warn("Card limit exceeded: {}", ex.getMessage());
-        return build(HttpStatus.UNPROCESSABLE_ENTITY, "CARD_LIMIT_EXCEEDED", ex.getMessage(), null);
+        return build(HttpStatus.UNPROCESSABLE_CONTENT, "CARD_LIMIT_EXCEEDED", ex.getMessage(), null);
+    }
+
+    @ExceptionHandler(InvalidUserStateException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidUserState(InvalidUserStateException ex) {
+        log.warn("Invalid user state: {}", ex.getMessage());
+        return build(HttpStatus.CONFLICT, "INVALID_USER_STATE", ex.getMessage(), null);
     }
 
     @ExceptionHandler(UserAlreadyExistsException.class)
     public ResponseEntity<ErrorResponse> handleUserAlreadyExists(UserAlreadyExistsException ex) {
         log.warn("User already exists: {}", ex.getMessage());
         return build(HttpStatus.CONFLICT, "USER_ALREADY_EXISTS", "User with this email already exists", null);
+    }
+
+    @ExceptionHandler(UserIdAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleUserIdAlreadyExists(UserIdAlreadyExistsException ex) {
+        log.warn("User id conflict: {}", ex.getMessage());
+        return build(HttpStatus.CONFLICT, "USER_ID_ALREADY_EXISTS", ex.getMessage(), null);
     }
 
     @ExceptionHandler(PaymentCardAlreadyExistsException.class)

@@ -2,6 +2,7 @@ package com.innowise.internship.userservice.security;
 
 import java.io.IOException;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -30,25 +31,27 @@ public class HeaderAuthenticationFilter extends OncePerRequestFilter {
     private final ObjectMapper objectMapper;
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, 
-                                    HttpServletResponse response, 
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
 
         String userIdHeader = request.getHeader("X-User-Id");
         String emailHeader = request.getHeader("X-User-Email");
-        String roleHeader = request.getHeader("X-User-Role");
+        String rolesHeader = request.getHeader("X-User-Roles");
 
         if (userIdHeader != null) {
             try {
+                List<String> roles = parseRoles(rolesHeader);
+
                 CurrentUser currentUser = new CurrentUser(
                     UUID.fromString(userIdHeader),
                     emailHeader,
-                    roleHeader
+                    roles
                 );
 
-                var authorities = (roleHeader != null)
-                    ? List.of(new SimpleGrantedAuthority(roleHeader))
-                    : Collections.<SimpleGrantedAuthority>emptyList();
+                var authorities = roles.stream()
+                    .map(SimpleGrantedAuthority::new)
+                    .toList();
 
                 UsernamePasswordAuthenticationToken auth =
                     new UsernamePasswordAuthenticationToken(currentUser, null, authorities);
@@ -61,6 +64,20 @@ public class HeaderAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private List<String> parseRoles(String rolesHeader) {
+        if (rolesHeader == null || rolesHeader.isBlank()) {
+            return Collections.emptyList();
+        }
+        return Arrays.stream(rolesHeader.split(","))
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .flatMap(role -> Arrays.stream(Roles.values())
+                    .filter(r -> r.matches(role))
+                    .map(Roles::getAuthority))
+            .distinct()
+            .toList();
     }
 
     private void sendInvalidAuthHeaderResponse(HttpServletResponse response) throws IOException {

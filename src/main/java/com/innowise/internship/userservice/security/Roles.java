@@ -19,3 +19,4 @@ public enum Roles {
         return authority.equals(roleFromContext);
     }
 }
+

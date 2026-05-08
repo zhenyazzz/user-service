@@ -1,5 +1,6 @@
 package com.innowise.internship.userservice.security;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -10,12 +11,11 @@ import com.innowise.internship.userservice.exception.security.SecurityContextExc
 
 import lombok.experimental.UtilityClass;
 
-
 @UtilityClass
 public class SecurityUtils {
 
     private static final String USER_NOT_FOUND_MESSAGE = "User not found in security context";
-    
+
     public Optional<CurrentUser> getCurrentUser() {
         return Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
                 .filter(Authentication::isAuthenticated)
@@ -36,14 +36,13 @@ public class SecurityUtils {
                 .orElseThrow(() -> new SecurityContextException(USER_NOT_FOUND_MESSAGE));
     }
 
-    public String getCurrentUserRole() {
+    public List<String> getCurrentUserRoles() {
         return getCurrentUser()
-                .map(CurrentUser::role)
+                .map(CurrentUser::roles)
                 .orElseThrow(() -> new SecurityContextException(USER_NOT_FOUND_MESSAGE));
     }
 
     public boolean isAdmin() {
-        return Roles.ADMIN.matches(getCurrentUserRole());
+        return getCurrentUserRoles().contains(Roles.ADMIN.getAuthority());
     }
-
 }

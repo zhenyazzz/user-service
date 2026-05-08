@@ -46,10 +46,10 @@ public class PaymentCardServiceImpl implements PaymentCardService {
         @CacheEvict(value = "cards_user", key = "#userId"),
         @CacheEvict(value = "users", key = "#userId"),
         @CacheEvict(value = "users_pages", allEntries = true),
+    }, put = {
+        @CachePut(value = "cards", key = "#result.id")
     })
-    @CachePut(value = "cards", key = "#result.id")
     public PaymentCardResponse createCard(UUID userId, PaymentCardCreateRequest request) {
-        // Блокировка пользователя для предотвращения одновременного создания нескольких карт
         User user = userRepository.findByIdAndStatusForUpdate(userId, UserStatus.ACTIVE)
                 .orElseThrow(() -> new UserNotFoundException("User not found with id: " + userId));
 
@@ -57,10 +57,6 @@ public class PaymentCardServiceImpl implements PaymentCardService {
             throw new PaymentCardAlreadyExistsException("Card with number already exists");
         }
 
-        /* 
-          Проверяю лимит карт беру из репозитория только активные карты
-          Лимит беру из конфига, решил не хардкодить
-        */
         long cardCount = paymentCardRepository.countByUserIdAndStatus(userId, PaymentCardStatus.ACTIVE);
         if (cardCount >= cardProperties.getMaxPerUser()) {
             throw new CardLimitExceededException(userId, cardProperties.getMaxPerUser());
@@ -83,9 +79,6 @@ public class PaymentCardServiceImpl implements PaymentCardService {
     @Transactional(readOnly = true)
     @Cacheable(value = "cards_pages", key = "{#pageable.pageNumber, #pageable.pageSize, #pageable.sort?.toString()}")
     public Page<PaymentCardResponse> getAllCards(Pageable pageable) {
-        /* 
-          Тут n+1 решил через join fetch в репозитории
-        */
         Page<PaymentCard> cards = paymentCardRepository.findAllWithUser(PaymentCardStatus.ACTIVE, pageable);
         return cards.map(paymentCardMapper::toResponse);
     }
@@ -94,9 +87,6 @@ public class PaymentCardServiceImpl implements PaymentCardService {
     @Transactional(readOnly = true)
     @Cacheable(value = "cards_user", key = "#userId")
     public List<PaymentCardResponse> getCardsByUserId(UUID userId) {
-        /* 
-          Тут n+1 решил через join fetch в репозитории
-        */
         List<PaymentCard> cards = paymentCardRepository.findAllByUserIdAndStatusWithUser(userId, PaymentCardStatus.ACTIVE);
         return paymentCardMapper.toResponseList(cards);
     }

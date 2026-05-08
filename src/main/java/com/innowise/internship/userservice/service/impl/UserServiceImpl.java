@@ -1,5 +1,7 @@
 package com.innowise.internship.userservice.service.impl;
 
+import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 import org.springframework.cache.annotation.CacheEvict;
@@ -12,10 +14,15 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.persistence.EntityManager;
+
+import com.innowise.internship.userservice.dto.internal.InternalUserResponse;
 import com.innowise.internship.userservice.dto.request.UserCreateRequest;
 import com.innowise.internship.userservice.dto.request.UserUpdateRequest;
 import com.innowise.internship.userservice.dto.response.UserResponse;
+import com.innowise.internship.userservice.exception.user.InvalidUserStateException;
 import com.innowise.internship.userservice.exception.user.UserAlreadyExistsException;
+import com.innowise.internship.userservice.exception.user.UserIdAlreadyExistsException;
 import com.innowise.internship.userservice.exception.user.UserNotFoundException;
 import com.innowise.internship.userservice.mapper.UserMapper;
 import com.innowise.internship.userservice.model.User;
@@ -35,18 +42,27 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final PaymentCardRepository paymentCardRepository;
     private final UserMapper userMapper;
+    private final EntityManager entityManager;
 
     @Override
     @Transactional
-    @CacheEvict(value = "users_pages", allEntries = true)
-    @CachePut(value = "users", key = "#result.id")
+    @Caching(evict = {
+            @CacheEvict(value = "users_pages", allEntries = true)
+    }, put = {
+            @CachePut(value = "users", key = "#result.id")
+    })
     public UserResponse createUser(UserCreateRequest request) {
         String email = userMapper.normalizeEmail(request.email());
         if (userRepository.existsByEmail(email)) {
             throw new UserAlreadyExistsException(email);
         }
+        if (userRepository.existsById(request.id())) {
+            throw new UserIdAlreadyExistsException(request.id());
+        }
 
-        return userMapper.toResponse(userRepository.save(userMapper.toEntity(request)));
+        User user = userMapper.toEntity(request);
+        entityManager.persist(user);
+        return userMapper.toResponse(user);
     }
 
     @Override
@@ -62,12 +78,6 @@ public class UserServiceImpl implements UserService {
     @Cacheable(value = "users_pages", key = "{#name, #surname, #pageable.pageNumber, #pageable.pageSize, #pageable.sort?.toString()}")
     public Page<UserResponse> getAllUsers(String name, String surname, Pageable pageable) {
         ListParams filter = normalizeListParams(name, surname);
-        /* 
-          Тут n+1 решил через EntityGraph в репозитории
-          Фильтрация по статусу у меня в спецификации если что 
-          И статусы я сделал через enum так как 
-          в ревью указано было (В ТЗ указано поле status (Active/Deleted))
-        */
         Specification<User> specification = UserSpecification.buildFilter(filter.nameParam(), filter.surnameParam());
         Page<User> users = userRepository.findAll(specification, pageable);
         return users.map(userMapper::toResponse);
@@ -76,9 +86,10 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     @Caching(evict = {
-        @CacheEvict(value = "users_pages", allEntries = true)
+            @CacheEvict(value = "users_pages", allEntries = true),
+            @CacheEvict(value = "internal_users", key = "#id")
     }, put = {
-        @CachePut(value = "users", key = "#id")
+            @CachePut(value = "users", key = "#id")
     })
     public UserResponse updateUser(UUID id, UserUpdateRequest request) {
         User user = findUserOrThrow(id);
@@ -89,18 +100,37 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     @Caching(evict = {
-        @CacheEvict(value = "users_pages", allEntries = true),
-        @CacheEvict(value = "users", key = "#id"),
-        @CacheEvict(value = {"cards", "cards_pages", "cards_user"}, allEntries = true)
+            @CacheEvict(value = "users_pages", allEntries = true),
+            @CacheEvict(value = "internal_users", key = "#id"),
+            @CacheEvict(value = "users", key = "#id"),
+            @CacheEvict(value = {"cards", "cards_pages", "cards_user"}, allEntries = true)
     })
     public void deleteUser(UUID id) {
         User user = findUserOrThrow(id);
-        /* 
-          Soft delete для пользователя и всех его активных карт
-        */
         paymentCardRepository.updateStatusByUserId(id, PaymentCardStatus.DELETED, PaymentCardStatus.ACTIVE);
         user.setStatus(UserStatus.DELETED);
         userRepository.save(user);
+    }
+
+    @Override
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "users_pages", allEntries = true),
+            @CacheEvict(value = "internal_users", key = "#id"),
+            @CacheEvict(value = "cards_user", key = "#id"),
+            @CacheEvict(value = "cards_pages", allEntries = true)
+    }, put = {
+            @CachePut(value = "users", key = "#id")
+    })
+    public UserResponse restoreUser(UUID id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new UserNotFoundException("User not found with id: " + id));
+        if (user.getStatus() != UserStatus.DELETED) {
+            throw new InvalidUserStateException("User is not deleted: " + id);
+        }
+        paymentCardRepository.updateStatusByUserId(id, PaymentCardStatus.ACTIVE, PaymentCardStatus.DELETED);
+        user.setStatus(UserStatus.ACTIVE);
+        return userMapper.toResponse(userRepository.save(user));
     }
 
     @Override
@@ -108,6 +138,37 @@ public class UserServiceImpl implements UserService {
     public UUID findIdByEmail(String email) {
         return userRepository.findIdByEmailAndStatus(userMapper.normalizeEmail(email), UserStatus.ACTIVE)
                 .orElseThrow(() -> new UserNotFoundException("User not found with email: " + email));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    @Cacheable(value = "internal_users", key = "#id")
+    public InternalUserResponse getInternalUserById(UUID id) {
+        User user = findUserOrThrow(id);
+        return userMapper.toInternalResponse(user);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<InternalUserResponse> getInternalUsersByIds(List<UUID> ids) {
+        List<UUID> distinctIds = normalizeInternalUserIds(ids);
+        if (distinctIds.isEmpty()) {
+            return List.of();
+        }
+        return userRepository.findAllByIdInAndStatus(distinctIds, UserStatus.ACTIVE).stream()
+                .map(userMapper::toInternalResponse)
+                .toList();
+    }
+
+    private List<UUID> normalizeInternalUserIds(List<UUID> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        List<UUID> distinct = ids.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        return distinct.isEmpty() ? List.of() : distinct;
     }
 
     private User findUserOrThrow(UUID id) {

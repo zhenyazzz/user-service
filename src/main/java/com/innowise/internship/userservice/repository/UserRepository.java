@@ -1,5 +1,7 @@
 package com.innowise.internship.userservice.repository;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -31,6 +33,9 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
 
     @Query("SELECT u.id FROM User u WHERE u.email = :email AND u.status = :status")
     Optional<UUID> findIdByEmailAndStatus(@Param("email") String email, @Param("status") UserStatus status);
+
+    @Query("SELECT u FROM User u WHERE u.id IN :ids AND u.status = :status")
+    List<User> findAllByIdInAndStatus(@Param("ids") Collection<UUID> ids, @Param("status") UserStatus status);
 
     boolean existsByEmail(String email);
 
